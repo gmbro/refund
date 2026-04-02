@@ -32,18 +32,32 @@ const categories: CategoryInfo[] = [
 ];
 
 // ==========================================
-// 1.5 Tooltip Component
+// 1.5 Tooltip Component (click/tap toggle for mobile)
 // ==========================================
 function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [open]);
+
   return (
-    <div className="group relative inline-flex items-center">
-      {children}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-max max-w-xs z-50 animate-fade-in-up" style={{ animationDuration: '0.2s', animationFillMode: 'both' }}>
-        <div className="bg-slate-800 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-pre-line text-center leading-relaxed">
-          {text}
+    <div ref={ref} className="relative inline-flex items-center">
+      <div onClick={() => setOpen(!open)}>{children}</div>
+      {open && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[240px] z-50 animate-fade-in-up" style={{ animationDuration: '0.15s' }}>
+          <div className="bg-slate-800 text-white text-xs rounded-lg py-2.5 px-3.5 shadow-xl whitespace-pre-line text-center leading-relaxed">
+            {text}
+          </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
         </div>
-        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
-      </div>
+      )}
     </div>
   );
 }
@@ -52,7 +66,7 @@ const LabelWithTooltip = ({ label, tooltipText }: { label: string; tooltipText: 
   <label className="form-label flex items-center gap-1.5">
     {label}
     <Tooltip text={tooltipText}>
-      <span className="cursor-help w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[9px] font-bold hover:bg-orange-200 hover:text-orange-600 transition-colors">?</span>
+      <span className="cursor-pointer w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold hover:bg-orange-200 hover:text-orange-600 active:bg-orange-300 transition-colors select-none">?</span>
     </Tooltip>
   </label>
 );
