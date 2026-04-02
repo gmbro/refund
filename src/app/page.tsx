@@ -32,7 +32,7 @@ const categories: CategoryInfo[] = [
 ];
 
 // ==========================================
-// 1.5 Tooltip Component (click/tap toggle for mobile)
+// 1.5 Tooltip Component (click/tap, opens below)
 // ==========================================
 function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
   const [open, setOpen] = useState(false);
@@ -49,13 +49,13 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
 
   return (
     <div ref={ref} className="relative inline-flex items-center">
-      <div onClick={() => setOpen(!open)}>{children}</div>
+      <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}>{children}</div>
       {open && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[240px] z-50 animate-fade-in-up" style={{ animationDuration: '0.15s' }}>
-          <div className="bg-slate-800 text-white text-xs rounded-lg py-2.5 px-3.5 shadow-xl whitespace-pre-line text-center leading-relaxed">
+        <div className="absolute top-full left-0 mt-1.5 w-[220px] z-50 animate-fade-in-up" style={{ animationDuration: '0.15s' }}>
+          <div className="absolute top-0 left-3 -mt-1 border-4 border-transparent border-b-slate-800"></div>
+          <div className="bg-slate-800 text-white text-xs rounded-lg py-2.5 px-3.5 shadow-xl whitespace-pre-line leading-relaxed mt-1">
             {text}
           </div>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
         </div>
       )}
     </div>
@@ -70,6 +70,51 @@ const LabelWithTooltip = ({ label, tooltipText }: { label: string; tooltipText: 
     </Tooltip>
   </label>
 );
+
+// ==========================================
+// 1.6 Currency Input Component (auto comma formatting)
+// ==========================================
+function CurrencyInput({ value, onChange, placeholder, required, id }: {
+  value: string;
+  onChange: (rawValue: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  id?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const formatNumber = (num: string) => {
+    const raw = num.replace(/[^0-9]/g, '');
+    if (!raw) return '';
+    return Number(raw).toLocaleString('ko-KR');
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    onChange(raw);
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setTimeout(() => {
+      e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      id={id}
+      type="text"
+      inputMode="numeric"
+      className="form-input"
+      placeholder={placeholder}
+      value={formatNumber(value)}
+      onChange={handleInputChange}
+      onFocus={handleFocus}
+      required={required}
+    />
+  );
+}
 
 const KOREAN_DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const KOREAN_MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
@@ -567,17 +612,17 @@ export default function FunnelPage() {
                 {category === 'gym' ? (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><LabelWithTooltip label="총 결제액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><input type="number" className="form-input" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
-                      <div><LabelWithTooltip label="총 개월 수" tooltipText="계약하신 전체 서비스 기간(개월 수) 또는 총 PT 횟수입니다." /><input type="number" className="form-input" value={formData.totalMonths || ''} onChange={(e) => handleChange('totalMonths', e.target.value)} required /></div>
+                      <div><LabelWithTooltip label="총 결제액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><CurrencyInput value={formData.totalAmount || ''} onChange={(v) => handleChange('totalAmount', v)} required /></div>
+                      <div><LabelWithTooltip label="총 개월 수" tooltipText="계약하신 전체 서비스 기간(개월 수) 또는 총 PT 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" value={formData.totalMonths || ''} onChange={(e) => handleChange('totalMonths', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><LabelWithTooltip label="이용 개월 수" tooltipText="실제로 헬스장/서비스를 이용하신 개월 수 또는 횟수입니다." /><input type="number" className="form-input" value={formData.usedMonths || ''} onChange={(e) => handleChange('usedMonths', e.target.value)} required /></div>
-                      <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                      <div><LabelWithTooltip label="이용 개월 수" tooltipText="실제로 헬스장/서비스를 이용하신 개월 수 또는 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" value={formData.usedMonths || ''} onChange={(e) => handleChange('usedMonths', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                      <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><CurrencyInput value={formData.demandedPenalty || ''} onChange={(v) => handleChange('demandedPenalty', v)} required /></div>
                     </div>
                   </>
                 ) : category === 'wedding' || category === 'travel' ? (
                    <>
-                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="식대, 대관료 등 계약서 상의 총 금액 또는 실제 총 결제액입니다." /><input type="number" className="form-input" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="식대, 대관료 등 계약서 상의 총 금액 또는 실제 총 결제액입니다." /><CurrencyInput value={formData.totalAmount || ''} onChange={(v) => handleChange('totalAmount', v)} required /></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <DatePicker
                         id={`${category}-target-date`}
@@ -594,7 +639,7 @@ export default function FunnelPage() {
                         onChange={(v) => handleChange('cancelDate', v)}
                       />
                     </div>
-                    <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><CurrencyInput value={formData.demandedPenalty || ''} onChange={(v) => handleChange('demandedPenalty', v)} required /></div>
                    </>
                 ) : category === 'other' ? (
                    <>
@@ -602,14 +647,14 @@ export default function FunnelPage() {
                       <LabelWithTooltip label="분쟁 대상 서비스 명칭" tooltipText="예: 필라테스, 렌터카, 어학원 등 분쟁이 발생한 업종을 적어주세요." />
                       <input type="text" className="form-input" placeholder="예: 요가원 회원권" value={formData.otherCategoryName || ''} onChange={(e) => handleChange('otherCategoryName', e.target.value)} required />
                     </div>
-                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><input type="number" className="form-input" placeholder="예: 1,000,000" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
-                    <div><LabelWithTooltip label="업체 요구 보상/위약금액 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" placeholder="예: 300,000" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><CurrencyInput placeholder="예: 1,000,000" value={formData.totalAmount || ''} onChange={(v) => handleChange('totalAmount', v)} required /></div>
+                    <div><LabelWithTooltip label="업체 요구 보상/위약금액 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><CurrencyInput placeholder="예: 300,000" value={formData.demandedPenalty || ''} onChange={(v) => handleChange('demandedPenalty', v)} required /></div>
                    </>
                 ) : (
                   // 공통 폼 (나머지 카테고리)
                   <>
-                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><input type="number" className="form-input" placeholder="예: 1,000,000" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
-                    <div><LabelWithTooltip label="업체의 요구 보상/위약금액 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" placeholder="예: 300,000" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><CurrencyInput placeholder="예: 1,000,000" value={formData.totalAmount || ''} onChange={(v) => handleChange('totalAmount', v)} required /></div>
+                    <div><LabelWithTooltip label="업체의 요구 보상/위약금액 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><CurrencyInput placeholder="예: 300,000" value={formData.demandedPenalty || ''} onChange={(v) => handleChange('demandedPenalty', v)} required /></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <DatePicker
                         id="generic-contract-date"
