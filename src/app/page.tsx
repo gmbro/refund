@@ -548,7 +548,7 @@ export default function FunnelPage() {
           <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md shadow-orange-500/20 flex-shrink-0">
             환
           </div>
-          <span className="font-bold text-sm md:text-lg text-slate-800 tracking-tight truncate">환불원정대</span>
+          <span className="font-bold text-xs md:text-lg text-slate-800 tracking-tight truncate">석지운 변호사의 환불원정대</span>
         </div>
         {step > 1 && step < 5 && (
           <div className="text-xs md:text-sm text-orange-600/80 font-medium bg-orange-100/50 px-2.5 md:px-3 py-1 rounded-full border border-orange-200/50 flex-shrink-0 ml-2">
@@ -949,7 +949,7 @@ export default function FunnelPage() {
               <button onClick={() => setShowPrivacy(true)} className="text-xs font-bold text-slate-600 hover:text-slate-900 underline decoration-slate-400 underline-offset-4">개인정보처리방침</button>
             </div>
             <p className="text-[10px] text-slate-400">
-              © {new Date().getFullYear()} 환불원정대 AI Intake System. All rights reserved.
+              © {new Date().getFullYear()} 석지운 변호사의 환불원정대. All rights reserved.
             </p>
          </div>
       </footer>
