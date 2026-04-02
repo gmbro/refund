@@ -1,0 +1,65 @@
+
+> refund-expedition@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.14
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+[Error: Cannot apply unknown utility class `backdrop-blur-md`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive]
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[2]!/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[3]!/Users/gyoungmin.lee/Desktop/환불원정대/src/app/globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
+Failed to compile.
+
+./src/app/globals.css:1:1
+Syntax error: tailwindcss: /Users/gyoungmin.lee/Desktop/환불원정대/src/app/globals.css Cannot apply unknown utility class `backdrop-blur-md`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive
+
+> 1 | @tailwind base;
+    | ^
+  2 | @tailwind components;
+  3 | @tailwind utilities;
+
+./src/app/globals.css
+Syntax error: tailwindcss: /Users/gyoungmin.lee/Desktop/환불원정대/src/app/globals.css Cannot apply unknown utility class `backdrop-blur-md`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive (1:1)
+
+> 1 | @tailwind base;
+    | ^
+  2 | @tailwind components;
+  3 | @tailwind utilities;
+
+    at tryRunOrWebpackError (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:316119)
+    at __webpack_require_module__ (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:131532)
+    at __nested_webpack_require_161494__ (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:130967)
+    at /Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:131824
+    at symbolIterator (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/neo-async/async.js:1:14444)
+    at done (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/neo-async/async.js:1:14824)
+    at Hook.eval [as callAsync] (eval at create (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:14:9224), <anonymous>:15:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:14:6378)
+    at /Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:130687
+    at symbolIterator (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/neo-async/async.js:1:14402)
+-- inner error --
+Syntax error: tailwindcss: /Users/gyoungmin.lee/Desktop/환불원정대/src/app/globals.css Cannot apply unknown utility class `backdrop-blur-md`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive (1:1)
+
+> 1 | @tailwind base;
+    | ^
+  2 | @tailwind components;
+  3 | @tailwind utilities;
+
+    at Object.<anonymous> (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[2]!/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[3]!/Users/gyoungmin.lee/Desktop/환불원정대/src/app/globals.css:1:7)
+    at /Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:962717
+    at Hook.eval [as call] (eval at create (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:14:9002), <anonymous>:7:1)
+    at Hook.CALL_DELEGATE [as _call] (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:14:6272)
+    at /Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:131565
+    at tryRunOrWebpackError (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:316073)
+    at __webpack_require_module__ (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:131532)
+    at __nested_webpack_require_161494__ (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:130967)
+    at /Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/webpack/bundle5.js:29:131824
+    at symbolIterator (/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/compiled/neo-async/async.js:1:14444)
+
+Generated code for /Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[2]!/Users/gyoungmin.lee/Desktop/환불원정대/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[3]!/Users/gyoungmin.lee/Desktop/환불원정대/src/app/globals.css
+
+Import trace for requested module:
+./src/app/globals.css
+
+
+> Build failed because of webpack errors

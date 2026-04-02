@@ -30,14 +30,16 @@ function calculateGymRefund(input: GymInput): RefundCalculation {
 
   // PT 횟수 기반 계산
   if (totalSessions && usedSessions) {
-    const perSession = totalAmount / totalSessions;
-    usageFee = Math.round(perSession * usedSessions);
+    const perSession = totalAmount / Number(totalSessions);
+    usageFee = Math.round(perSession * Number(usedSessions));
     formula = `이용료 = (${totalAmount.toLocaleString()}원 ÷ ${totalSessions}회) × ${usedSessions}회 = ${usageFee.toLocaleString()}원`;
   } else {
     // 기간 기반 계산
-    const monthlyRate = totalAmount / totalMonths;
-    usageFee = Math.round(monthlyRate * usedMonths);
-    formula = `이용료 = (${totalAmount.toLocaleString()}원 ÷ ${totalMonths}개월) × ${usedMonths}개월 = ${usageFee.toLocaleString()}원`;
+    const tMonths = Number(totalMonths) || 1;
+    const uMonths = Number(usedMonths) || 0;
+    const monthlyRate = totalAmount / tMonths;
+    usageFee = Math.round(monthlyRate * uMonths);
+    formula = `이용료 = (${totalAmount.toLocaleString()}원 ÷ ${tMonths}개월) × ${uMonths}개월 = ${usageFee.toLocaleString()}원`;
   }
 
   // 법적 최대 위약금 = 총 계약대금의 10%
@@ -63,8 +65,8 @@ function calculateGymRefund(input: GymInput): RefundCalculation {
 function calculateWeddingRefund(input: WeddingInput): RefundCalculation {
   const { totalAmount, weddingDate, cancelDate, demandedPenalty } = input;
 
-  const wedding = new Date(weddingDate);
-  const cancel = new Date(cancelDate);
+  const wedding = new Date(String(weddingDate || ''));
+  const cancel = new Date(String(cancelDate || ''));
   const diffTime = wedding.getTime() - cancel.getTime();
   const daysBeforeWedding = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -117,8 +119,8 @@ function calculateWeddingRefund(input: WeddingInput): RefundCalculation {
 function calculateTravelRefund(input: TravelInput): RefundCalculation {
   const { totalAmount, serviceDate, cancelDate, serviceType, demandedPenalty } = input;
 
-  const service = new Date(serviceDate);
-  const cancel = new Date(cancelDate);
+  const service = new Date(String(serviceDate || ''));
+  const cancel = new Date(String(cancelDate || ''));
   const diffTime = service.getTime() - cancel.getTime();
   const daysBeforeService = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
