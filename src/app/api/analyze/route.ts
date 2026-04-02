@@ -8,10 +8,19 @@ import { DisputeInput } from '@/lib/types';
 
 export const maxDuration = 60; // Vercel 함수 타임아웃 60초
 
+// Vercel body size limit (free plan: 4.5MB)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '4.5mb',
+    },
+  },
+};
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { category, description, ...rest } = body;
+    const { category, description, fileBase64, fileMimeType, ...rest } = body;
 
     // 입력 데이터 구성
     const inputData = buildInputData(category, rest, description);
@@ -29,15 +38,47 @@ export async function POST(req: NextRequest) {
       legalReferences = FALLBACK_LEGAL_REFERENCES[category] || [];
     }
 
-    // 3. Gemini AI 기초 진단 및 변호사용 리포트 생성
+    // 3. 이용약관 링크에서 텍스트 가져오기
+    let contractTermsText = '';
+    if (rest.contractLink) {
+      try {
+        const linkRes = await fetch(rest.contractLink, {
+          signal: AbortSignal.timeout(5000),
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
+        if (linkRes.ok) {
+          const html = await linkRes.text();
+          // 간단한 HTML→텍스트 변환 (태그 제거, 3000자 제한)
+          contractTermsText = html
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 3000);
+        }
+      } catch {
+        console.log('이용약관 링크 접근 실패:', rest.contractLink);
+      }
+    }
+
+    // 4. 첨부 파일 데이터 구성
+    const attachmentData = fileBase64 ? {
+      base64: fileBase64,
+      mimeType: fileMimeType || 'image/jpeg',
+    } : undefined;
+
+    // 5. Gemini AI 기초 진단 및 변호사용 리포트 생성
     const { clientSummary, lawyerReport } = await analyzeLegalCase(
       category,
       inputData as unknown as Record<string, unknown>,
       legalReferences,
-      calculation as unknown as Record<string, unknown>
+      calculation as unknown as Record<string, unknown>,
+      contractTermsText,
+      attachmentData
     );
 
-    // 4. Supabase에 저장 (추후 변호사가 볼 데이터)
+    // 6. Supabase에 저장 (파일 데이터는 저장하지 않음 — 용량 이슈)
     let resultId = crypto.randomUUID();
     try {
       const { data: dbResult, error } = await supabase
@@ -47,9 +88,9 @@ export async function POST(req: NextRequest) {
           input_data: inputData,
           calculation,
           legal_references: legalReferences,
-          ai_analysis: clientSummary, // v4: ai_analysis 컬럼에 고객용 요약 저장
-          report_markdown: lawyerReport, // v4: report_markdown에 변호사용 리포트 저장
-          status: 'pending' // 초기 상태: 검토 전
+          ai_analysis: clientSummary,
+          report_markdown: lawyerReport,
+          status: 'pending'
         })
         .select('id')
         .single();
@@ -63,13 +104,13 @@ export async function POST(req: NextRequest) {
       console.error('Supabase save failed:', dbError);
     }
 
-    // 5. 결과 반환
+    // 7. 결과 반환
     const result = {
       id: resultId,
       category,
       input_data: inputData,
       calculation,
-      clientSummary, // 새로운 필드 반환
+      clientSummary,
       lawyerReport,
       created_at: new Date().toISOString(),
     };

@@ -423,6 +423,7 @@ export default function FunnelPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [fileData, setFileData] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -473,7 +474,7 @@ export default function FunnelPage() {
     handleNext(3);
     
     try {
-      const payload: Record<string, string> = { ...formData, category };
+      const payload: Record<string, any> = { ...formData, category };
       const numericFields = ['totalAmount', 'totalMonths', 'usedMonths', 'demandedPenalty'];
       for (const field of numericFields) {
         if (payload[field]) payload[field] = String(Number(payload[field]));
@@ -485,6 +486,13 @@ export default function FunnelPage() {
       }
       if (category === 'travel' && payload.targetDate) {
         payload.serviceDate = payload.targetDate;
+      }
+
+      // 첨부 파일 Base64 데이터 포함
+      if (fileData) {
+        payload.fileBase64 = fileData.base64;
+        payload.fileMimeType = fileData.mimeType;
+        payload.attachedFile = fileData.name;
       }
 
       const res = await fetch('/api/analyze', {
@@ -721,7 +729,7 @@ export default function FunnelPage() {
                     <input type="url" className="form-input bg-slate-50 text-sm" placeholder="https://..." value={formData.contractLink || ''} onChange={(e) => handleChange('contractLink', e.target.value)} />
                   </div>
                   <div>
-                    <LabelWithTooltip label="계약서/결제내역 첨부 (선택)" tooltipText="참고용으로 계약서 촬영본 또는 PDF를 첨부하실 수 있습니다." />
+                    <LabelWithTooltip label="계약서/결제내역 첨부 (선택, 3MB 이하)" tooltipText="계약서 촬영본 또는 PDF를 첨부하면 AI가 내용을 분석하여 진단에 반영합니다." />
                     <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="block w-full text-sm text-slate-500
                       file:mr-4 file:py-2.5 file:px-4
                       file:rounded-xl file:border-0
@@ -730,10 +738,26 @@ export default function FunnelPage() {
                       hover:file:bg-orange-200 file:transition-colors file:cursor-pointer cursor-pointer border border-slate-200 rounded-xl"
                       onChange={(e) => {
                         if (e.target.files && e.target.files.length > 0) {
-                          handleChange('attachedFile', e.target.files[0].name);
+                          const file = e.target.files[0];
+                          if (file.size > 3 * 1024 * 1024) {
+                            alert('파일 크기는 3MB 이하로 제한됩니다.');
+                            e.target.value = '';
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const result = reader.result as string;
+                            const base64 = result.split(',')[1];
+                            setFileData({ base64, mimeType: file.type, name: file.name });
+                          };
+                          reader.readAsDataURL(file);
+                          handleChange('attachedFile', file.name);
                         }
                       }}
                     />
+                    {fileData && (
+                      <p className="text-xs text-green-600 mt-1.5 font-medium">✅ {fileData.name} 첨부됨 — AI 분석에 반영됩니다</p>
+                    )}
                   </div>
                 </div>
               </div>
