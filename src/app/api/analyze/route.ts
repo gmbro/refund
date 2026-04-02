@@ -29,15 +29,15 @@ export async function POST(req: NextRequest) {
       legalReferences = FALLBACK_LEGAL_REFERENCES[category] || [];
     }
 
-    // 3. Gemini AI 법리 분석
-    const { analysis, protestText, reportMarkdown } = await analyzeLegalCase(
+    // 3. Gemini AI 기초 진단 및 변호사용 리포트 생성
+    const { clientSummary, lawyerReport } = await analyzeLegalCase(
       category,
       inputData as unknown as Record<string, unknown>,
       legalReferences,
       calculation as unknown as Record<string, unknown>
     );
 
-    // 4. Supabase에 저장
+    // 4. Supabase에 저장 (추후 변호사가 볼 데이터)
     let resultId = crypto.randomUUID();
     try {
       const { data: dbResult, error } = await supabase
@@ -47,19 +47,20 @@ export async function POST(req: NextRequest) {
           input_data: inputData,
           calculation,
           legal_references: legalReferences,
-          ai_analysis: analysis,
-          protest_text: protestText,
-          report_markdown: reportMarkdown,
+          ai_analysis: clientSummary, // v4: ai_analysis 컬럼에 고객용 요약 저장
+          report_markdown: lawyerReport, // v4: report_markdown에 변호사용 리포트 저장
+          status: 'pending' // 초기 상태: 검토 전
         })
         .select('id')
         .single();
 
       if (!error && dbResult) {
         resultId = dbResult.id;
+      } else if (error) {
+         console.error('Supabase save error details:', error);
       }
     } catch (dbError) {
       console.error('Supabase save failed:', dbError);
-      // DB 저장 실패해도 결과는 반환
     }
 
     // 5. 결과 반환
@@ -68,10 +69,8 @@ export async function POST(req: NextRequest) {
       category,
       input_data: inputData,
       calculation,
-      legal_references: legalReferences,
-      ai_analysis: analysis,
-      protest_text: protestText,
-      report_markdown: reportMarkdown,
+      clientSummary, // 새로운 필드 반환
+      lawyerReport,
       created_at: new Date().toISOString(),
     };
 
@@ -79,34 +78,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Analysis error:', error);
     return NextResponse.json(
-      { error: '분석 중 오류가 발생했습니다. 다시 시도해주세요.' },
+      { error: '기초 진단 중 오류가 발생했습니다. 다시 시도해주세요.' },
       { status: 500 }
     );
-  }
-}
-
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-
-  if (!id) {
-    return NextResponse.json({ error: 'ID가 필요합니다' }, { status: 400 });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('dispute_analyses')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) {
-      return NextResponse.json({ error: '결과를 찾을 수 없습니다' }, { status: 404 });
-    }
-
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json({ error: '데이터 조회 실패' }, { status: 500 });
   }
 }
 
