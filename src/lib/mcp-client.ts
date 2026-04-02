@@ -1,5 +1,5 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const MCP_REMOTE_URL = process.env.MCP_REMOTE_URL || "https://korean-law-mcp.fly.dev/mcp";
 
@@ -7,9 +7,9 @@ const MCP_REMOTE_URL = process.env.MCP_REMOTE_URL || "https://korean-law-mcp.fly
  * MCP 원격 서버에 연결하여 도구를 호출합니다.
  * korean-law-mcp의 87개 법률 도구를 Vercel 서버리스에서도 사용 가능합니다.
  */
-async function createMcpClient(): Promise<{ client: Client; transport: SSEClientTransport }> {
-  // SSE transport로 원격 MCP 서버에 연결
-  const transport = new SSEClientTransport(new URL(MCP_REMOTE_URL));
+async function createMcpClient(): Promise<{ client: Client; transport: StreamableHTTPClientTransport }> {
+  // HTTP transport로 원격 MCP 서버에 연결
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_REMOTE_URL));
   const client = new Client(
     { name: "refund-expedition", version: "1.0.0" },
     { capabilities: {} }
@@ -26,7 +26,7 @@ export async function callMcpTool(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<unknown> {
-  let transport: SSEClientTransport | null = null;
+  let transport: StreamableHTTPClientTransport | null = null;
 
   try {
     const connection = await createMcpClient();
