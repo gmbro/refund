@@ -117,6 +117,14 @@ function buildInputData(category: string, data: Record<string, string>, descript
         description,
       };
     default:
-      throw new Error('지원하지 않는 카테고리');
+      // 범용 카테고리 (12종)
+      return {
+        category,
+        totalAmount: Number(data.totalAmount) || 0,
+        demandedPenalty: Number(data.demandedPenalty) || 0,
+        contractDate: data.contractDate || '',
+        cancelDate: data.cancelDate || '',
+        description,
+      };
   }
 }
