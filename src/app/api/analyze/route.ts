@@ -117,13 +117,16 @@ function buildInputData(category: string, data: Record<string, string>, descript
         description,
       };
     default:
-      // 범용 카테고리 (12종)
+      // 범용 카테고리
       return {
         category,
         totalAmount: Number(data.totalAmount) || 0,
         demandedPenalty: Number(data.demandedPenalty) || 0,
         contractDate: data.contractDate || '',
         cancelDate: data.cancelDate || '',
+        otherCategoryName: data.otherCategoryName,
+        contractLink: data.contractLink,
+        attachedFile: data.attachedFile,
         description,
       };
   }

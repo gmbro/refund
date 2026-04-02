@@ -12,6 +12,9 @@ export type DisputeInput = {
   cancelDate?: string;
   serviceType?: string;
   contractDate?: string;
+  otherCategoryName?: string;
+  contractLink?: string;
+  attachedFile?: string;
 };
 
 export type GymInput = DisputeInput;

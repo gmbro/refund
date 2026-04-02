@@ -15,13 +15,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
       </head>
-      <body className="antialiased min-h-screen flex flex-col font-gowun">
+      <body className="antialiased min-h-screen flex flex-col font-gowun" suppressHydrationWarning>
         {children}
       </body>
     </html>

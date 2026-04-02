@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { CATEGORY_LEGAL_SUMMARY } from '@/data/refund-rules';
 
 // ==========================================
 // 1. Data & Types (15 Categories)
@@ -27,10 +28,333 @@ const categories: CategoryInfo[] = [
   { id: 'ecommerce', title: '전자상거래 / 직구', icon: '🛒' },
   { id: 'postpartum', title: '산후조리원', icon: '👶' },
   { id: 'funeral', title: '상조 서비스', icon: '⚰️' },
+  { id: 'other', title: '기타 (직접 입력)', icon: '📝' },
 ];
 
 // ==========================================
-// 2. Main Funnel Component
+// 1.5 Tooltip Component
+// ==========================================
+function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
+  return (
+    <div className="group relative inline-flex items-center">
+      {children}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-max max-w-xs z-50 animate-fade-in-up" style={{ animationDuration: '0.2s', animationFillMode: 'both' }}>
+        <div className="bg-slate-800 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-pre-line text-center leading-relaxed">
+          {text}
+        </div>
+        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
+      </div>
+    </div>
+  );
+}
+
+const LabelWithTooltip = ({ label, tooltipText }: { label: string; tooltipText: string }) => (
+  <label className="form-label flex items-center gap-1.5">
+    {label}
+    <Tooltip text={tooltipText}>
+      <span className="cursor-help w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[9px] font-bold hover:bg-orange-200 hover:text-orange-600 transition-colors">?</span>
+    </Tooltip>
+  </label>
+);
+
+const KOREAN_DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const KOREAN_MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+
+// ==========================================
+// 2. Custom DatePicker Component
+// ==========================================
+function DatePicker({ value, onChange, label, id, tooltipText }: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  id: string;
+  tooltipText?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(() => {
+    if (value) return new Date(value).getFullYear();
+    return new Date().getFullYear();
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (value) return new Date(value).getMonth();
+    return new Date().getMonth();
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const handleNextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const handleSelectDate = (day: number) => {
+    const mm = String(viewMonth + 1).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    onChange(`${viewYear}-${mm}-${dd}`);
+    setIsOpen(false);
+  };
+
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
+  const days: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+  const selectedDate = value ? new Date(value) : null;
+
+  const formatDisplayDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${KOREAN_DAYS[d.getDay()]})`;
+  };
+
+  return (
+    <div ref={containerRef} className="datepicker-container relative">
+      {tooltipText ? (
+        <LabelWithTooltip label={label} tooltipText={tooltipText} />
+      ) : (
+        <label className="form-label" htmlFor={id}>{label}</label>
+      )}
+      <button
+        type="button"
+        id={id}
+        className="form-input text-left flex items-center justify-between cursor-pointer"
+        onClick={() => { setIsOpen(!isOpen); if (!isOpen && value) { setViewYear(new Date(value).getFullYear()); setViewMonth(new Date(value).getMonth()); } }}
+      >
+        <span className={value ? 'text-slate-800' : 'text-slate-400'}>
+          {value ? formatDisplayDate(value) : '날짜를 선택하세요'}
+        </span>
+        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="datepicker-dropdown absolute z-50 mt-2 w-full bg-white rounded-xl shadow-2xl border border-slate-200/80 overflow-hidden animate-fade-in-up" style={{ animationDuration: '0.2s' }}>
+          {/* Month/Year navigation */}
+          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100">
+            <button type="button" onClick={handlePrevMonth} className="w-8 h-8 rounded-full hover:bg-orange-100 flex items-center justify-center transition-colors">
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <div className="text-base font-bold text-slate-700">
+              {viewYear}년 {KOREAN_MONTHS[viewMonth]}
+            </div>
+            <button type="button" onClick={handleNextMonth} className="w-8 h-8 rounded-full hover:bg-orange-100 flex items-center justify-center transition-colors">
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-0 px-3 pt-3 pb-1">
+            {KOREAN_DAYS.map((day, i) => (
+              <div key={day} className={`text-center text-xs font-bold py-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-0 px-3 pb-3">
+            {days.map((day, i) => {
+              if (day === null) return <div key={`empty-${i}`} className="p-1" />;
+              
+              const dateObj = new Date(viewYear, viewMonth, day);
+              const isToday = dateObj.getTime() === today.getTime();
+              const isSelected = selectedDate && dateObj.getFullYear() === selectedDate.getFullYear() && dateObj.getMonth() === selectedDate.getMonth() && dateObj.getDate() === selectedDate.getDate();
+              const dayOfWeek = dateObj.getDay();
+
+              return (
+                <button
+                  key={`day-${day}`}
+                  type="button"
+                  onClick={() => handleSelectDate(day)}
+                  className={`
+                    p-1 text-sm font-medium rounded-lg transition-all duration-150 aspect-square flex items-center justify-center
+                    ${isSelected 
+                      ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30 scale-105' 
+                      : isToday 
+                        ? 'bg-orange-100 text-orange-700 font-bold ring-1 ring-orange-300' 
+                        : dayOfWeek === 0 
+                          ? 'text-red-500 hover:bg-red-50' 
+                          : dayOfWeek === 6 
+                            ? 'text-blue-500 hover:bg-blue-50' 
+                            : 'text-slate-600 hover:bg-slate-100'
+                    }
+                  `}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick actions */}
+          <div className="px-3 pb-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => { const t = new Date(); handleSelectDate(t.getDate()); setViewYear(t.getFullYear()); setViewMonth(t.getMonth()); }}
+              className="flex-1 text-xs py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium transition-colors"
+            >
+              오늘
+            </button>
+            <button
+              type="button"
+              onClick={() => { onChange(''); setIsOpen(false); }}
+              className="flex-1 text-xs py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium transition-colors"
+            >
+              초기화
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// 3. Voice Input Hook
+// ==========================================
+function useVoiceInput(onResult: (text: string) => void) {
+  const [isListening, setIsListening] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setIsSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ko-KR';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        if (finalTranscript) {
+          onResult(finalTranscript);
+        }
+      };
+
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+
+      recognitionRef.current = recognition;
+    }
+  }, [onResult]);
+
+  const toggle = useCallback(() => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  }, [isListening]);
+
+  return { isListening, isSupported, toggle };
+}
+
+// ==========================================
+// 4. Legal Summary Preview Component
+// ==========================================
+function LegalPreviewCard({ categoryId }: { categoryId: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const summary = CATEGORY_LEGAL_SUMMARY[categoryId];
+  if (!summary) return null;
+
+  return (
+    <div className="legal-preview-card mb-6">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full text-left"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚖️</span>
+            <span className="font-bold text-slate-700 text-sm">소비자분쟁해결기준 — {summary.title}</span>
+          </div>
+          <svg
+            className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+        {!isExpanded && (
+          <p className="text-xs text-orange-600 mt-2 font-medium">
+            👆 탭하여 내 법적 권리를 미리 확인하세요
+          </p>
+        )}
+      </button>
+
+      {isExpanded && (
+        <div className="mt-4 space-y-4 animate-fade-in-up" style={{ animationDuration: '0.3s' }}>
+          <div>
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">📋 핵심 기준</h4>
+            <ul className="space-y-1.5">
+              {summary.keyPoints.map((point, i) => (
+                <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
+                  <span className="text-orange-400 mt-0.5 flex-shrink-0">•</span>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="bg-orange-50/50 rounded-lg p-3 border border-orange-100">
+            <h4 className="text-xs font-bold text-orange-600 mb-1.5">⚡ 위약금 상한</h4>
+            <p className="text-sm font-bold text-slate-800">{summary.maxPenaltyRule}</p>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">🛡️ 당신의 권리</h4>
+            <ul className="space-y-1.5">
+              {summary.consumerRights.map((right, i) => (
+                <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
+                  <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span>
+                  {right}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// 5. Main Funnel Component
 // ==========================================
 export default function FunnelPage() {
   const [step, setStep] = useState(1);
@@ -56,8 +380,35 @@ export default function FunnelPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Voice input handler
+  const handleVoiceResult = useCallback((text: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      description: (prev.description || '') + text,
+    }));
+  }, []);
+
+  const { isListening, isSupported, toggle: toggleVoice } = useVoiceInput(handleVoiceResult);
+
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 날짜 필드 유효성 검증 (DatePicker는 hidden input이므로 수동 검증)
+    if (category === 'wedding' || category === 'travel') {
+      if (!formData.targetDate || !formData.cancelDate) {
+        alert('날짜를 모두 선택해주세요.');
+        return;
+      }
+    } else if (category !== 'gym' && category !== 'other') {
+      if (!formData.contractDate || !formData.cancelDate) {
+        alert('계약/결제 일자와 취소 통보 일자를 모두 선택해주세요.');
+        return;
+      }
+    } else if (category === 'other' && !formData.otherCategoryName) {
+      alert('분쟁 대상 서비스/업종을 입력해주세요.');
+      return;
+    }
+
     handleNext(3);
     
     try {
@@ -65,6 +416,14 @@ export default function FunnelPage() {
       const numericFields = ['totalAmount', 'totalMonths', 'usedMonths', 'demandedPenalty'];
       for (const field of numericFields) {
         if (payload[field]) payload[field] = String(Number(payload[field]));
+      }
+
+      // Map targetDate/contractDate to appropriate API fields
+      if (category === 'wedding' && payload.targetDate) {
+        payload.weddingDate = payload.targetDate;
+      }
+      if (category === 'travel' && payload.targetDate) {
+        payload.serviceDate = payload.targetDate;
       }
 
       const res = await fetch('/api/analyze', {
@@ -95,6 +454,7 @@ export default function FunnelPage() {
       const payload = {
         id: analysisResult.id,
         userName: formData.userName,
+        userEmail: formData.userEmail,
         phoneNumber: formData.phoneNumber,
         agreedPrivacy: true
       };
@@ -170,7 +530,7 @@ export default function FunnelPage() {
           </div>
         )}
 
-        {/* STEP 2: 정보 입력 (공통 폼 위주로 간소화) */}
+        {/* STEP 2: 정보 입력 */}
         {step === 2 && (
           <div className="max-w-xl mx-auto pt-8">
             <button onClick={() => handlePrev(1)} className="flex items-center gap-1 text-slate-500 hover:text-slate-700 text-sm mb-6 font-medium">
@@ -179,53 +539,118 @@ export default function FunnelPage() {
             <div className="mb-6 text-center">
               <div className="text-4xl mb-3">{categories.find(c => c.id === category)?.icon}</div>
               <h1 className="text-2xl font-bold text-slate-800 mb-2">{getCategoryTitle()} 분쟁 접수</h1>
-              <p className="text-slate-600 text-sm">상황을 입력해주시면 AI가 소비자분쟁기준을 바탕으로 1차 진단서를 작성합니다.</p>
+              <p className="text-slate-600 text-sm">상황을 입력해주시면 AI가 소비자분쟁해결기준을 바탕으로 1차 진단서를 작성합니다.</p>
             </div>
+
+            {/* 법적 기준 미리보기 */}
+            <LegalPreviewCard categoryId={category} />
 
             <form onSubmit={handleAnalyze} className="space-y-6">
               <div className="glass-card p-6 md:p-8 space-y-6">
                 
                 {category === 'gym' ? (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="form-label">총 결제액 (원)</label><input type="number" className="form-input" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
-                      <div><label className="form-label">총 개월 수</label><input type="number" className="form-input" value={formData.totalMonths || ''} onChange={(e) => handleChange('totalMonths', e.target.value)} required /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><LabelWithTooltip label="총 결제액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><input type="number" className="form-input" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
+                      <div><LabelWithTooltip label="총 개월 수" tooltipText="계약하신 전체 서비스 기간(개월 수) 또는 총 PT 횟수입니다." /><input type="number" className="form-input" value={formData.totalMonths || ''} onChange={(e) => handleChange('totalMonths', e.target.value)} required /></div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="form-label">이용 개월 수</label><input type="number" className="form-input" value={formData.usedMonths || ''} onChange={(e) => handleChange('usedMonths', e.target.value)} required /></div>
-                      <div><label className="form-label">업체 위약금 (원)</label><input type="number" className="form-input" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><LabelWithTooltip label="이용 개월 수" tooltipText="실제로 헬스장/서비스를 이용하신 개월 수 또는 횟수입니다." /><input type="number" className="form-input" value={formData.usedMonths || ''} onChange={(e) => handleChange('usedMonths', e.target.value)} required /></div>
+                      <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
                     </div>
                   </>
                 ) : category === 'wedding' || category === 'travel' ? (
                    <>
-                    <div><label className="form-label">총 결제 금액 (원)</label><input type="number" className="form-input" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="form-label">{category==='wedding'?'예식예정일':'이용예정일'}</label><input type="date" className="form-input" value={formData.targetDate || ''} onChange={(e) => handleChange('targetDate', e.target.value)} required /></div>
-                      <div><label className="form-label">취소요청일</label><input type="date" className="form-input" value={formData.cancelDate || ''} onChange={(e) => handleChange('cancelDate', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="식대, 대관료 등 계약서 상의 총 금액 또는 실제 총 결제액입니다." /><input type="number" className="form-input" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <DatePicker
+                        id={`${category}-target-date`}
+                        label={category==='wedding'?'예식 예정일':'이용 예정일'}
+                        tooltipText={category==='wedding'?'계약서 상의 결혼식 날짜입니다.':'숙소나 항공권의 실제 이용 시작일입니다.'}
+                        value={formData.targetDate || ''}
+                        onChange={(v) => handleChange('targetDate', v)}
+                      />
+                      <DatePicker
+                        id={`${category}-cancel-date`}
+                        label="취소 요청일"
+                        tooltipText="업체에 처음으로 계약 해지(환불) 의사를 전달한 날짜입니다."
+                        value={formData.cancelDate || ''}
+                        onChange={(v) => handleChange('cancelDate', v)}
+                      />
                     </div>
-                    <div><label className="form-label">업체구 위약금 (원)</label><input type="number" className="form-input" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                   </>
+                ) : category === 'other' ? (
+                   <>
+                    <div>
+                      <LabelWithTooltip label="분쟁 대상 서비스 명칭" tooltipText="예: 필라테스, 렌터카, 어학원 등 분쟁이 발생한 업종을 적어주세요." />
+                      <input type="text" className="form-input" placeholder="예: 요가원 회원권" value={formData.otherCategoryName || ''} onChange={(e) => handleChange('otherCategoryName', e.target.value)} required />
+                    </div>
+                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><input type="number" className="form-input" placeholder="예: 1,000,000" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="업체 요구 보상/위약금액 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" placeholder="예: 300,000" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
                    </>
                 ) : (
-                  // 공통 폼 (나머지 12개 카테고리)
+                  // 공통 폼 (나머지 카테고리)
                   <>
-                    <div><label className="form-label">총 결제 금액 (원)</label><input type="number" className="form-input" placeholder="예: 1000000" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
-                    <div><label className="form-label">업체의 요구 보상/위약금액 (원)</label><input type="number" className="form-input" placeholder="예: 300000" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="form-label">계약/결제 일자</label><input type="date" className="form-input" value={formData.contractDate || ''} onChange={(e) => handleChange('contractDate', e.target.value)} required /></div>
-                      <div><label className="form-label">취소 통보 일자</label><input type="date" className="form-input" value={formData.cancelDate || ''} onChange={(e) => handleChange('cancelDate', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><input type="number" className="form-input" placeholder="예: 1,000,000" value={formData.totalAmount || ''} onChange={(e) => handleChange('totalAmount', e.target.value)} required /></div>
+                    <div><LabelWithTooltip label="업체의 요구 보상/위약금액 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><input type="number" className="form-input" placeholder="예: 300,000" value={formData.demandedPenalty || ''} onChange={(e) => handleChange('demandedPenalty', e.target.value)} required /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <DatePicker
+                        id="generic-contract-date"
+                        label="계약/결제 일자"
+                        tooltipText="최초로 비용을 결제하시거나 계약서에 서명하신 날짜입니다."
+                        value={formData.contractDate || ''}
+                        onChange={(v) => handleChange('contractDate', v)}
+                      />
+                      <DatePicker
+                        id="generic-cancel-date"
+                        label="취소 통보 일자"
+                        tooltipText="업체에 처음으로 계약 해지(환불) 의사를 전달한 날짜입니다."
+                        value={formData.cancelDate || ''}
+                        onChange={(v) => handleChange('cancelDate', v)}
+                      />
                     </div>
                   </>
                 )}
 
                 <div className="pt-4 border-t border-slate-200">
-                  <label className="form-label text-orange-600 font-bold">억울한 상황을 상세히 적어주세요</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="form-label text-orange-600 font-bold mb-0">억울한 상황을 상세히 적어주세요</label>
+                    {isSupported && (
+                      <button
+                        type="button"
+                        onClick={toggleVoice}
+                        className={`voice-btn ${isListening ? 'voice-btn-active' : ''}`}
+                        title={isListening ? '음성 입력 중지' : '음성으로 입력하기'}
+                      >
+                        {isListening ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="voice-pulse-dot" />
+                            <span className="text-xs font-bold">녹음 중...</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                            <span className="text-xs font-bold">음성 입력</span>
+                          </span>
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <textarea 
-                    className="form-input resize-none w-full h-32 mt-2 bg-slate-50/50" 
-                    placeholder="예: 단순 변심으로 환불하려는데 계약금 100%를 전부 몰수한다고 합니다."
+                    className={`form-input resize-none w-full h-32 bg-slate-50/50 ${isListening ? 'ring-2 ring-red-300 border-red-200' : ''}`}
+                    placeholder="예: 단순 변심으로 환불하려는데 계약금 100%를 전부 몰수한다고 합니다. 음성 입력도 가능합니다."
                     value={formData.description || ''}
                     onChange={(e) => handleChange('description', e.target.value)}
                     required
                   />
+                  {isListening && (
+                    <p className="text-xs text-red-500 mt-1 animate-pulse font-medium">
+                      🎤 음성을 인식하고 있습니다. 말씀해주세요...
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -246,11 +671,11 @@ export default function FunnelPage() {
                <div className="absolute inset-0 flex items-center justify-center text-3xl">⚖️</div>
              </div>
              <h2 className="text-2xl font-bold text-slate-800 mb-3">
-                법령 및 판례 검색 중...
+                소비자분쟁해결기준 분석 중...
              </h2>
              <p className="text-slate-600 text-center max-w-md text-sm leading-relaxed">
                입력하신 정보를 바탕으로 소비자분쟁해결기준과 <br/>
-               최신 판례를 1차적으로 검토하고 있습니다.
+               관련 법령·판례를 우선적으로 검토하고 있습니다.
              </p>
           </div>
         )}
@@ -265,6 +690,52 @@ export default function FunnelPage() {
                   </p>
                   본 진단서는 AI가 소비자분쟁해결기준을 바탕으로 작성한 단순 참고용 정보입니다. <strong className="text-orange-600 border-b border-orange-300">아래 폼을 통해 석지운 변호사에게 실제 대응 방안을 문의해보세요.</strong>
               </div>
+
+              {/* 내 법적 권리 하이라이트 섹션 */}
+              {analysisResult.calculation && (
+                <div className="legal-rights-card mb-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xl">🛡️</span>
+                    <h3 className="text-lg font-extrabold text-slate-800">소비자분쟁해결기준에 따른 내 권리</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                      <p className="text-xs font-bold text-green-600 mb-1">법적으로 보장되는 최소 환불액</p>
+                      <p className="text-2xl font-extrabold text-green-700">
+                        {Number(analysisResult.calculation.legalMinRefund).toLocaleString()}원
+                      </p>
+                    </div>
+                    <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                      <p className="text-xs font-bold text-red-500 mb-1">업체 요구 위약금</p>
+                      <p className="text-2xl font-extrabold text-red-600">
+                        {Number(analysisResult.calculation.demandedPenalty).toLocaleString()}원
+                      </p>
+                    </div>
+                  </div>
+
+                  {analysisResult.calculation.excessPenalty > 0 && (
+                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-300 mb-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">⚠️</span>
+                        <p className="text-sm font-extrabold text-amber-700">법적 기준 초과 위약금 감지!</p>
+                      </div>
+                      <p className="text-sm text-amber-800">
+                        업체가 요구하는 위약금은 소비자분쟁해결기준보다 <strong className="text-red-600">{Number(analysisResult.calculation.excessPenalty).toLocaleString()}원</strong> 더 많습니다.
+                        이 초과분은 법적으로 부당한 요구일 수 있습니다.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <p className="text-xs font-bold text-slate-500 mb-2">📐 산정 근거</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{analysisResult.calculation.formula}</p>
+                    <p className="text-xs text-slate-500 mt-3 pt-2 border-t border-slate-200">
+                      <strong>적용 법령:</strong> {analysisResult.calculation.legalBasis}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="glass-card mb-10 overflow-hidden">
                  <div className="bg-gradient-to-r from-orange-100 to-amber-50 px-6 py-5 border-b border-orange-200/60">
@@ -304,15 +775,44 @@ export default function FunnelPage() {
                         <input type="tel" className="form-input bg-slate-50 focus:bg-white" placeholder="010-1234-5678" value={formData.phoneNumber || ''} onChange={(e) => handleChange('phoneNumber', e.target.value)} required />
                       </div>
                     </div>
+                    <div>
+                      <label className="form-label">이메일</label>
+                      <input type="email" className="form-input bg-slate-50 focus:bg-white" placeholder="example@email.com" value={formData.userEmail || ''} onChange={(e) => handleChange('userEmail', e.target.value)} required />
+                    </div>
                     
-                    <div className="pt-2 pb-2">
+                    {/* 개인정보 수집 안내 */}
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs text-slate-500 space-y-2">
+                      <p className="font-bold text-slate-600">📋 개인정보 수집·이용 안내</p>
+                      <table className="w-full text-left">
+                        <tbody>
+                          <tr className="border-b border-slate-100">
+                            <td className="py-1.5 pr-3 font-semibold text-slate-600 whitespace-nowrap align-top">수집 항목</td>
+                            <td className="py-1.5">이름, 이메일, 휴대폰 번호</td>
+                          </tr>
+                          <tr className="border-b border-slate-100">
+                            <td className="py-1.5 pr-3 font-semibold text-slate-600 whitespace-nowrap align-top">수집 목적</td>
+                            <td className="py-1.5">석지운 변호사의 법률 상담 연결 및 사건 진행 안내</td>
+                          </tr>
+                          <tr className="border-b border-slate-100">
+                            <td className="py-1.5 pr-3 font-semibold text-slate-600 whitespace-nowrap align-top">보유 기간</td>
+                            <td className="py-1.5">수집일로부터 1년 (이후 자동 파기)</td>
+                          </tr>
+                          <tr>
+                            <td className="py-1.5 pr-3 font-semibold text-slate-600 whitespace-nowrap align-top">제3자 제공</td>
+                            <td className="py-1.5">석지운 법률사무소 외 제3자에게 제공하지 않습니다.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p className="text-slate-400">※ 동의를 거부할 수 있으며, 거부 시 상담 신청이 제한됩니다.</p>
+                    </div>
+
+                    <div className="pt-1 pb-2">
                        <label className="flex items-start gap-3 cursor-pointer group">
                          <div className="pt-0.5">
                            <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500 cursor-pointer" required />
                          </div>
-                         <div className="text-xs text-slate-500 group-hover:text-slate-700 transition-colors">
-                           (필수) 접수를 위한 개인정보 수집 및 이용에 동의합니다. <br/>
-                           상담 목적으로만 이용되며 1년 후 안전하게 파기됩니다.
+                         <div className="text-xs text-slate-600 group-hover:text-slate-800 transition-colors font-medium">
+                           (필수) 위 개인정보 수집·이용에 동의합니다.
                          </div>
                        </label>
                     </div>
@@ -340,8 +840,9 @@ export default function FunnelPage() {
              <h2 className="text-3xl font-extrabold text-slate-800 mb-4">접수가 완료되었습니다!</h2>
              <p className="text-slate-600 mb-8 max-w-sm mx-auto leading-relaxed">
                전달해주신 내용은 <strong>석지운 변호사</strong>가 꼼꼼히 확인 후,<br/>
-               입력해주신 연락처(<strong>{formData.phoneNumber}</strong>)로<br/>
-               영업일 기준 1~2일 내에 답장을 드리겠습니다.
+               입력해주신 연락처(<strong>{formData.phoneNumber}</strong>) 또는<br/>
+               이메일(<strong>{formData.userEmail}</strong>)로<br/>
+               영업일 기준 1~2일 내에 답변을 드리겠습니다.
              </p>
              <button onClick={() => window.location.reload()} className="font-bold px-6 py-3 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50 transition-colors">
                홈으로 돌아가기
@@ -358,6 +859,11 @@ export default function FunnelPage() {
               본 서비스는 AI 리걸 어시스턴트에 의한 1차 진단 정보를 제공하며, 변호사법에 따른 유상 법률상담을 즉시 제공하지 않습니다.
               <br/>모든 법적 권리 보호 조치와 분쟁 해결은 석지운 변호사와의 실제 상담 검토 후 결정하시기 바랍니다.
             </p>
+            <div className="flex justify-center gap-4 mb-3">
+              <a href="#" onClick={(e) => { e.preventDefault(); alert('이용약관 페이지입니다.'); }} className="text-xs text-slate-500 hover:text-slate-800 underline decoration-slate-300 underline-offset-4">이용약관</a>
+              <span className="text-xs text-slate-300">|</span>
+              <a href="#" onClick={(e) => { e.preventDefault(); alert('개인정보처리방침 페이지입니다.'); }} className="text-xs font-bold text-slate-600 hover:text-slate-900 underline decoration-slate-400 underline-offset-4">개인정보처리방침</a>
+            </div>
             <p className="text-xs text-slate-500 font-bold mb-2">
                석지운 법률사무소 | 대표변호사 석지운
             </p>

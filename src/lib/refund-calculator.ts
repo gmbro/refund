@@ -13,7 +13,7 @@ export function calculateRefund(input: DisputeInput): RefundCalculation {
     case 'travel':
       return calculateTravelRefund(input);
     default:
-      throw new Error('지원하지 않는 카테고리입니다');
+      return calculateGenericRefund(input);
   }
 }
 
@@ -185,5 +185,30 @@ function calculateTravelRefund(input: TravelInput): RefundCalculation {
     usageFee,
     formula: `이용 예정일까지 ${daysBeforeService}일 남음 (${periodDesc})\n위약금 = ${totalAmount.toLocaleString()}원 × ${(penaltyRate * 100)}% = ${legalMaxPenalty.toLocaleString()}원\n환불금액 = ${totalAmount.toLocaleString()}원 - ${legalMaxPenalty.toLocaleString()}원 = ${legalMinRefund.toLocaleString()}원`,
     legalBasis: `소비자분쟁해결기준 (${typeLabel}) — ${periodDesc}: 총 금액의 ${(penaltyRate * 100)}% 위약금`,
+  };
+}
+
+/**
+ * 범용 카테고리 환불 계산
+ * 근거: 소비자분쟁해결기준 일반 원칙 — 위약금은 총 계약금액의 10~20% 이내
+ * 보수적으로 10%를 적용합니다.
+ */
+function calculateGenericRefund(input: DisputeInput): RefundCalculation {
+  const { totalAmount, demandedPenalty } = input;
+
+  // 범용 기준: 위약금 상한 10%
+  const legalMaxPenalty = Math.round(totalAmount * 0.1);
+  const usageFee = 0; // 범용 카테고리는 이용료 별도 미산정
+  const legalMinRefund = Math.max(0, totalAmount - usageFee - legalMaxPenalty);
+  const excessPenalty = Math.max(0, demandedPenalty - legalMaxPenalty);
+
+  return {
+    legalMinRefund,
+    legalMaxPenalty,
+    demandedPenalty,
+    excessPenalty,
+    usageFee,
+    formula: `환불금액 = ${totalAmount.toLocaleString()}원 - ${legalMaxPenalty.toLocaleString()}원(위약금 최대 10%) = ${legalMinRefund.toLocaleString()}원`,
+    legalBasis: '소비자분쟁해결기준 일반 원칙 — 위약금은 총 계약금액의 10% 이내 (카테고리별 세부 기준은 변호사 검토 필요)',
   };
 }
