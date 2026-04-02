@@ -362,6 +362,8 @@ export default function FunnelPage() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -641,7 +643,7 @@ export default function FunnelPage() {
                   </div>
                   <textarea 
                     className={`form-input resize-none w-full h-32 bg-slate-50/50 ${isListening ? 'ring-2 ring-red-300 border-red-200' : ''}`}
-                    placeholder="예: 단순 변심으로 환불하려는데 계약금 100%를 전부 몰수한다고 합니다. 음성 입력도 가능합니다."
+                    placeholder="예: 단순 변심으로 환불하려는데 계약금 100%를 전부 몰수한다고 합니다."
                     value={formData.description || ''}
                     onChange={(e) => handleChange('description', e.target.value)}
                     required
@@ -651,6 +653,29 @@ export default function FunnelPage() {
                       🎤 음성을 인식하고 있습니다. 말씀해주세요...
                     </p>
                   )}
+                </div>
+
+                {/* 이용약관 링크 및 계약서 첨부 */}
+                <div className="pt-4 border-t border-slate-200 space-y-4">
+                  <div>
+                    <LabelWithTooltip label="이용약관 링크 (선택)" tooltipText="해당 업체의 이용약관이나 환불 정책이 게시된 웹사이트 주소가 있다면 붙여넣어주세요." />
+                    <input type="url" className="form-input bg-slate-50 text-sm" placeholder="https://..." value={formData.contractLink || ''} onChange={(e) => handleChange('contractLink', e.target.value)} />
+                  </div>
+                  <div>
+                    <LabelWithTooltip label="계약서/결제내역 첨부 (선택)" tooltipText="참고용으로 계약서 촬영본 또는 PDF를 첨부하실 수 있습니다." />
+                    <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="block w-full text-sm text-slate-500
+                      file:mr-4 file:py-2.5 file:px-4
+                      file:rounded-xl file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-orange-100 file:text-orange-700
+                      hover:file:bg-orange-200 file:transition-colors file:cursor-pointer cursor-pointer border border-slate-200 rounded-xl"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleChange('attachedFile', e.target.files[0].name);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -857,21 +882,98 @@ export default function FunnelPage() {
          <div className="max-w-4xl mx-auto px-6 text-center">
             <p className="text-xs text-slate-400 leading-relaxed mb-3">
               본 서비스는 AI 리걸 어시스턴트에 의한 1차 진단 정보를 제공하며, 변호사법에 따른 유상 법률상담을 즉시 제공하지 않습니다.
-              <br/>모든 법적 권리 보호 조치와 분쟁 해결은 석지운 변호사와의 실제 상담 검토 후 결정하시기 바랍니다.
+              <br/>모든 법적 권리 보호 조치와 분쟁 해결은 담당 변호사와의 실제 상담 검토 후 결정하시기 바랍니다.
             </p>
             <div className="flex justify-center gap-4 mb-3">
-              <a href="#" onClick={(e) => { e.preventDefault(); alert('이용약관 페이지입니다.'); }} className="text-xs text-slate-500 hover:text-slate-800 underline decoration-slate-300 underline-offset-4">이용약관</a>
+              <button onClick={() => setShowTerms(true)} className="text-xs text-slate-500 hover:text-slate-800 underline decoration-slate-300 underline-offset-4">이용약관</button>
               <span className="text-xs text-slate-300">|</span>
-              <a href="#" onClick={(e) => { e.preventDefault(); alert('개인정보처리방침 페이지입니다.'); }} className="text-xs font-bold text-slate-600 hover:text-slate-900 underline decoration-slate-400 underline-offset-4">개인정보처리방침</a>
+              <button onClick={() => setShowPrivacy(true)} className="text-xs font-bold text-slate-600 hover:text-slate-900 underline decoration-slate-400 underline-offset-4">개인정보처리방침</button>
             </div>
-            <p className="text-xs text-slate-500 font-bold mb-2">
-               석지운 법률사무소 | 대표변호사 석지운
-            </p>
             <p className="text-[10px] text-slate-400">
-              © {new Date().getFullYear()} Refund Expedition AI Intake System. All rights reserved.
+              © {new Date().getFullYear()} 환불원정대 AI Intake System. All rights reserved.
             </p>
          </div>
       </footer>
+
+      {/* 이용약관 모달 */}
+      {showTerms && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowTerms(false)}>
+          <div className="bg-white w-full max-w-2xl max-h-[80vh] rounded-2xl shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">이용약관</h2>
+              <button onClick={() => setShowTerms(false)} className="text-slate-400 hover:text-slate-800 text-2xl">&times;</button>
+            </div>
+            <div className="px-6 py-5 overflow-y-auto max-h-[65vh] text-sm text-slate-600 leading-relaxed space-y-4">
+              <h3 className="font-bold text-slate-800">제1조 (목적)</h3>
+              <p>본 약관은 환불원정대(이하 &quot;서비스&quot;)가 제공하는 AI 기반 소비자분쟁 진단 서비스의 이용 조건 및 절차에 관한 사항을 규정함을 목적으로 합니다.</p>
+
+              <h3 className="font-bold text-slate-800">제2조 (서비스의 내용)</h3>
+              <p>① 본 서비스는 이용자가 입력한 정보를 바탕으로 소비자분쟁해결기준 및 관련 법령에 따른 AI 기초 진단 정보를 제공합니다.<br/>② 본 서비스는 법률 자문이 아니며, 진단 결과는 참고용으로만 활용되어야 합니다.<br/>③ 이용자가 변호사 상담을 신청할 경우, 해당 정보는 담당 변호사에게 전달되며 별도의 상담 절차가 진행됩니다.</p>
+
+              <h3 className="font-bold text-slate-800">제3조 (면책사항)</h3>
+              <p>① 본 서비스에서 제공하는 AI 진단 결과는 법적 효력이 없으며, 실제 분쟁 해결을 위해서는 반드시 변호사와의 상담이 필요합니다.<br/>② 서비스 제공자는 AI 진단 결과의 정확성 또는 완전성을 보장하지 않습니다.<br/>③ 이용자의 부정확한 정보 입력으로 인한 결과에 대해 서비스 제공자는 책임을 지지 않습니다.</p>
+
+              <h3 className="font-bold text-slate-800">제4조 (이용자의 의무)</h3>
+              <p>① 이용자는 정확한 정보를 입력하여야 합니다.<br/>② 타인의 개인정보를 도용하여 서비스를 이용해서는 안 됩니다.<br/>③ 서비스를 통해 제공받은 진단 결과를 상업적 목적으로 무단 복제·배포해서는 안 됩니다.</p>
+
+              <h3 className="font-bold text-slate-800">제5조 (서비스 변경 및 중단)</h3>
+              <p>서비스 제공자는 운영상·기술상의 필요에 따라 서비스의 내용을 변경하거나 중단할 수 있으며, 이 경우 사전 공지합니다.</p>
+
+              <h3 className="font-bold text-slate-800">제6조 (준거법 및 관할)</h3>
+              <p>본 약관에 관한 분쟁은 대한민국 법률에 따르며, 서울중앙지방법원을 관할 법원으로 합니다.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 개인정보처리방침 모달 */}
+      {showPrivacy && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowPrivacy(false)}>
+          <div className="bg-white w-full max-w-2xl max-h-[80vh] rounded-2xl shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">개인정보처리방침</h2>
+              <button onClick={() => setShowPrivacy(false)} className="text-slate-400 hover:text-slate-800 text-2xl">&times;</button>
+            </div>
+            <div className="px-6 py-5 overflow-y-auto max-h-[65vh] text-sm text-slate-600 leading-relaxed space-y-4">
+              <h3 className="font-bold text-slate-800">1. 개인정보의 수집 항목</h3>
+              <p>본 서비스는 상담 신청 시 다음의 개인정보를 수집합니다.</p>
+              <ul className="list-disc ml-5 space-y-1">
+                <li><strong>필수 항목:</strong> 이름, 휴대폰 번호, 이메일 주소</li>
+                <li><strong>선택 항목:</strong> 이용약관 링크, 계약서/결제내역 파일명</li>
+                <li><strong>자동 수집 항목:</strong> 서비스 이용 기록, 접속 일시</li>
+              </ul>
+
+              <h3 className="font-bold text-slate-800">2. 수집 및 이용 목적</h3>
+              <ul className="list-disc ml-5 space-y-1">
+                <li>AI 기초 진단 서비스 제공</li>
+                <li>담당 변호사의 법률 상담 연결 및 사건 진행 안내</li>
+                <li>서비스 이용 기록 보관 및 분쟁 처리</li>
+              </ul>
+
+              <h3 className="font-bold text-slate-800">3. 개인정보의 보유 및 이용 기간</h3>
+              <p>수집된 개인정보는 <strong>수집일로부터 1년</strong>간 보유·이용하며, 보유 기간 경과 후 지체 없이 파기합니다. 단, 관련 법령에 따라 보존이 필요한 경우에는 해당 법령에서 정한 기간 동안 보관합니다.</p>
+
+              <h3 className="font-bold text-slate-800">4. 개인정보의 제3자 제공</h3>
+              <p>이용자의 개인정보는 원칙적으로 외부에 제공하지 않습니다. 다만, 이용자가 상담을 신청한 경우 해당 담당 변호사에게 사건 진행을 위해 제공될 수 있습니다.</p>
+
+              <h3 className="font-bold text-slate-800">5. 개인정보의 파기 절차 및 방법</h3>
+              <p>보유 기간이 경과하거나 처리 목적이 달성된 경우, 전자적 파일은 복구 불가능한 방법으로 삭제하며, 종이 문서는 분쇄기로 파기합니다.</p>
+
+              <h3 className="font-bold text-slate-800">6. 이용자의 권리</h3>
+              <p>이용자는 언제든지 자신의 개인정보에 대해 열람, 정정, 삭제, 처리 정지를 요청할 수 있습니다. 요청은 서비스 내 문의 채널을 통해 접수하실 수 있습니다.</p>
+
+              <h3 className="font-bold text-slate-800">7. 개인정보보호 책임자</h3>
+              <p>개인정보 관련 문의사항이 있으시면 아래 연락처로 문의해주시기 바랍니다.</p>
+              <ul className="list-disc ml-5 space-y-1">
+                <li>담당자: 환불원정대 개인정보보호 담당</li>
+                <li>이메일: privacy@refund-expedition.com</li>
+              </ul>
+
+              <p className="text-xs text-slate-400 pt-4 border-t border-slate-100">본 방침은 {new Date().getFullYear()}년 4월 1일부터 시행됩니다.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
