@@ -9,6 +9,16 @@
     background-color: #fff7ed;
     color: #1e293b;
     font-family: var(--font-gowun);
+    -webkit-text-size-adjust: 100%;
+    overflow-wrap: break-word;
+    word-break: keep-all;
+  }
+
+  /* 모바일 입력 확대(zoom) 방지 */
+  @media (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   }
 }
 
@@ -32,6 +42,8 @@
     background-color: rgba(255, 255, 255, 0.9);
     transition: all 0.2s;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    -webkit-appearance: none;
+    appearance: none;
   }
   .form-input:focus {
     outline: none;

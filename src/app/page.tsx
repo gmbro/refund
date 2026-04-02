@@ -540,34 +540,34 @@ export default function FunnelPage() {
   return (
     <main className="flex-1 w-full flex flex-col min-h-screen relative overflow-hidden bg-orange-50/30">
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between w-full relative z-10 border-b border-orange-100/50 bg-white/60 backdrop-blur-sm">
+      <header className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between w-full relative z-10 border-b border-orange-100/50 bg-white/60 backdrop-blur-sm">
         <div 
           onClick={() => { if(step <= 2) handlePrev(1) }}
-          className={`flex items-center gap-2 ${step <= 2 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+          className={`flex items-center gap-2 min-w-0 ${step <= 2 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
         >
-          <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-orange-500/20">
+          <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md shadow-orange-500/20 flex-shrink-0">
             환
           </div>
-          <span className="font-bold text-lg text-slate-800 tracking-tight">석지운 변호사의 환불원정대</span>
+          <span className="font-bold text-sm md:text-lg text-slate-800 tracking-tight truncate">환불원정대</span>
         </div>
         {step > 1 && step < 5 && (
-          <div className="text-sm text-orange-600/80 font-medium bg-orange-100/50 px-3 py-1 rounded-full border border-orange-200/50">
-            진행중 {step} / 4
+          <div className="text-xs md:text-sm text-orange-600/80 font-medium bg-orange-100/50 px-2.5 md:px-3 py-1 rounded-full border border-orange-200/50 flex-shrink-0 ml-2">
+            {step} / 4
           </div>
         )}
       </header>
 
       {/* Container */}
-      <div className="flex-1 w-full max-w-5xl mx-auto px-4 pb-24 relative z-10 animate-fade-in-up" key={step}>
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-6 pb-24 relative z-10 animate-fade-in-up overflow-x-hidden" key={step}>
         
         {/* STEP 1: 카테고리 15종 */}
         {step === 1 && (
-          <div className="pt-12 pb-10">
-             <div className="text-center mb-12">
-               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-100 text-orange-700 text-sm font-bold mb-6 shadow-sm border border-orange-200">
-                 ✨ 15가지 일상 속 분쟁, 석지운 변호사가 검토합니다
+          <div className="pt-8 md:pt-12 pb-10">
+             <div className="text-center mb-8 md:mb-12">
+               <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1.5 rounded-full bg-orange-100 text-orange-700 text-xs md:text-sm font-bold mb-4 md:mb-6 shadow-sm border border-orange-200">
+                 ✨ 일상 속 분쟁, AI와 변호사가 함께 풀어드립니다
                </div>
-               <h1 className="text-3xl md:text-5xl font-extrabold mb-5 text-slate-800 leading-tight">
+               <h1 className="text-2xl md:text-5xl font-extrabold mb-4 md:mb-5 text-slate-800 leading-tight">
                  불공정한 위약금, <br className="md:hidden" />
                  <span className="gradient-text">확실하게 방어하세요</span>
                </h1>
@@ -576,15 +576,15 @@ export default function FunnelPage() {
                </p>
              </div>
 
-             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-4">
                 {categories.map((cat) => (
                   <div
                     key={cat.id}
                     onClick={() => handleCategorySelect(cat.id)}
-                    className="glass-card p-5 cursor-pointer flex flex-col items-center justify-center text-center hover:border-orange-300 hover:shadow-orange-200/50 hover:-translate-y-1 transition-all duration-300"
+                    className="glass-card p-3 md:p-5 cursor-pointer flex flex-col items-center justify-center text-center hover:border-orange-300 hover:shadow-orange-200/50 hover:-translate-y-1 transition-all duration-300"
                   >
-                    <div className="text-4xl mb-3 drop-shadow-sm">{cat.icon}</div>
-                    <h2 className="text-sm md:text-base font-bold text-slate-700">{cat.title}</h2>
+                    <div className="text-2xl md:text-4xl mb-1.5 md:mb-3 drop-shadow-sm">{cat.icon}</div>
+                    <h2 className="text-xs md:text-base font-bold text-slate-700 leading-tight">{cat.title}</h2>
                   </div>
                 ))}
              </div>
@@ -783,16 +783,16 @@ export default function FunnelPage() {
                     <h3 className="text-lg font-extrabold text-slate-800">소비자분쟁해결기준에 따른 내 권리</h3>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-4">
+                    <div className="bg-green-50 rounded-xl p-3 md:p-4 border border-green-200">
                       <p className="text-xs font-bold text-green-600 mb-1">법적으로 보장되는 최소 환불액</p>
-                      <p className="text-2xl font-extrabold text-green-700">
+                      <p className="text-xl md:text-2xl font-extrabold text-green-700">
                         {Number(analysisResult.calculation.legalMinRefund).toLocaleString()}원
                       </p>
                     </div>
-                    <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                    <div className="bg-red-50 rounded-xl p-3 md:p-4 border border-red-200">
                       <p className="text-xs font-bold text-red-500 mb-1">업체 요구 위약금</p>
-                      <p className="text-2xl font-extrabold text-red-600">
+                      <p className="text-xl md:text-2xl font-extrabold text-red-600">
                         {Number(analysisResult.calculation.demandedPenalty).toLocaleString()}원
                       </p>
                     </div>
@@ -875,7 +875,7 @@ export default function FunnelPage() {
                           </tr>
                           <tr className="border-b border-slate-100">
                             <td className="py-1.5 pr-3 font-semibold text-slate-600 whitespace-nowrap align-top">수집 목적</td>
-                            <td className="py-1.5">석지운 변호사의 법률 상담 연결 및 사건 진행 안내</td>
+                            <td className="py-1.5">담당 변호사의 법률 상담 연결 및 사건 진행 안내</td>
                           </tr>
                           <tr className="border-b border-slate-100">
                             <td className="py-1.5 pr-3 font-semibold text-slate-600 whitespace-nowrap align-top">보유 기간</td>
@@ -883,7 +883,7 @@ export default function FunnelPage() {
                           </tr>
                           <tr>
                             <td className="py-1.5 pr-3 font-semibold text-slate-600 whitespace-nowrap align-top">제3자 제공</td>
-                            <td className="py-1.5">석지운 법률사무소 외 제3자에게 제공하지 않습니다.</td>
+                            <td className="py-1.5">담당 법률사무소 외 제3자에게 제공하지 않습니다.</td>
                           </tr>
                         </tbody>
                       </table>
