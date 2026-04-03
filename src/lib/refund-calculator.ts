@@ -1,4 +1,4 @@
-import { DisputeInput, GymInput, WeddingInput, TravelInput, RefundCalculation } from './types';
+import { DisputeInput, GymInput, WeddingInput, TravelInput, MedicalInput, RefundCalculation } from './types';
 
 /**
  * 카테고리별 환불액을 계산합니다.
@@ -12,6 +12,8 @@ export function calculateRefund(input: DisputeInput): RefundCalculation {
       return calculateWeddingRefund(input);
     case 'travel':
       return calculateTravelRefund(input);
+    case 'medical':
+      return calculateMedicalRefund(input);
     default:
       return calculateGenericRefund(input);
   }
@@ -59,6 +61,44 @@ function calculateGymRefund(input: GymInput): RefundCalculation {
 }
 
 /**
+ * 의료/성형외과 환불 계산 (횟수 기반)
+ * 근거: 소비자분쟁해결기준 (의료서비스), 소비자기본법 제16조
+ * 공식: 환불금액 = (총 결제액 / 총 횟수) x 잔여 횟수 - 위약금(최대 10%)
+ * 병원 폐업/사업자 귀책 시: 위약금 없이 잔여분 전액 환급
+ */
+function calculateMedicalRefund(input: MedicalInput): RefundCalculation {
+  const { totalAmount, totalSessions, usedSessions, demandedPenalty, cancelReason } = input;
+
+  const total = Number(totalSessions) || 1;
+  const used = Number(usedSessions) || 0;
+  const remaining = Math.max(0, total - used);
+  const perSession = totalAmount / total;
+  const usageFee = Math.round(perSession * used);
+  const remainingValue = Math.round(perSession * remaining);
+
+  // 사업자 귀책(폐업, 부작용) 시 위약금 면제
+  const isProviderFault = cancelReason === 'closure' || cancelReason === 'sideEffect';
+  const penaltyRate = isProviderFault ? 0 : 0.1;
+  const legalMaxPenalty = Math.round(totalAmount * penaltyRate);
+  const legalMinRefund = Math.max(0, remainingValue - legalMaxPenalty);
+  const excessPenalty = Math.max(0, demandedPenalty - legalMaxPenalty);
+
+  const reasonLabel = isProviderFault
+    ? '(사업자 귀책사유로 위약금 면제)'
+    : '(소비자 사유 — 위약금 최대 10%)';
+
+  return {
+    legalMinRefund,
+    legalMaxPenalty,
+    demandedPenalty,
+    excessPenalty,
+    usageFee,
+    formula: `1회당 단가 = ${totalAmount.toLocaleString()}원 / ${total}회 = ${Math.round(perSession).toLocaleString()}원\n이용료 = ${Math.round(perSession).toLocaleString()}원 x ${used}회 = ${usageFee.toLocaleString()}원\n잔여 가치 = ${Math.round(perSession).toLocaleString()}원 x ${remaining}회 = ${remainingValue.toLocaleString()}원\n환불금액 = ${remainingValue.toLocaleString()}원 - ${legalMaxPenalty.toLocaleString()}원(위약금) = ${legalMinRefund.toLocaleString()}원 ${reasonLabel}`,
+    legalBasis: `소비자분쟁해결기준 (의료서비스) — 횟수제 시술의 경우 잔여 횟수 비례 환급, 위약금 상한 ${(penaltyRate * 100)}% ${reasonLabel}`,
+  };
+}
+
+/**
  * 예식장 환불 계산
  * 근거: 공정거래위원회 소비자분쟁해결기준 (예식서비스업)
  */
@@ -70,30 +110,24 @@ function calculateWeddingRefund(input: WeddingInput): RefundCalculation {
   const diffTime = wedding.getTime() - cancel.getTime();
   const daysBeforeWedding = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  let penaltyRate: number;
-  let periodDesc: string;
+  let penaltyRate: number = 0;
+  let periodDesc: string = '';
 
-  if (daysBeforeWedding >= 150) {
+  if (isNaN(daysBeforeWedding)) {
     penaltyRate = 0;
-    periodDesc = '예식 예정일 5개월 이상 전';
+    periodDesc = '날짜 미적용 (정보 부족)';
   } else if (daysBeforeWedding >= 90) {
-    penaltyRate = 0.1;
-    periodDesc = '예식 예정일 90일~150일 전';
+    penaltyRate = 0;
+    periodDesc = '예식 예정일 90일 이상 전';
   } else if (daysBeforeWedding >= 60) {
-    penaltyRate = 0.15;
+    penaltyRate = 0.1;
     periodDesc = '예식 예정일 60일~89일 전';
   } else if (daysBeforeWedding >= 30) {
     penaltyRate = 0.2;
     periodDesc = '예식 예정일 30일~59일 전';
-  } else if (daysBeforeWedding >= 10) {
-    penaltyRate = 0.4;
-    periodDesc = '예식 예정일 10일~29일 전';
-  } else if (daysBeforeWedding >= 1) {
-    penaltyRate = 0.5;
-    periodDesc = '예식 예정일 1일~9일 전';
   } else {
-    penaltyRate = 0.7;
-    periodDesc = '예식 당일';
+    penaltyRate = 0.35;
+    periodDesc = '예식 당일 및 29일 이내';
   }
 
   const legalMaxPenalty = Math.round(totalAmount * penaltyRate);
@@ -124,10 +158,13 @@ function calculateTravelRefund(input: TravelInput): RefundCalculation {
   const diffTime = service.getTime() - cancel.getTime();
   const daysBeforeService = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  let penaltyRate: number;
-  let periodDesc: string;
+  let penaltyRate: number = 0;
+  let periodDesc: string = '';
 
-  if (serviceType === 'accommodation') {
+  if (isNaN(daysBeforeService)) {
+    penaltyRate = 0;
+    periodDesc = '날짜 미적용 (정보 부족)';
+  } else if (serviceType === 'accommodation') {
     // 숙박업 기준 (비수기 기준)
     if (daysBeforeService >= 10) {
       penaltyRate = 0;

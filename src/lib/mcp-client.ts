@@ -125,6 +125,15 @@ export async function searchLawsByCategory(category: string, description: string
         if (travelResult) results.push(JSON.stringify(travelResult));
         break;
       }
+      case 'medical': {
+        // 의료서비스 관련 법령 검색
+        const medicalResult = await searchLaw("소비자분쟁해결기준 의료서비스 성형외과");
+        if (medicalResult) results.push(JSON.stringify(medicalResult));
+        
+        const medLawResult = await searchLaw("의료법 설명의무");
+        if (medLawResult) results.push(JSON.stringify(medLawResult));
+        break;
+      }
     }
 
     // 상황 설명으로 분쟁 준비 검색

@@ -36,23 +36,45 @@ const categories: CategoryInfo[] = [
 // ==========================================
 function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
   const [open, setOpen] = useState(false);
+  const [alignRight, setAlignRight] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const handleOutside = (e: MouseEvent) => {
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
   }, [open]);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setAlignRight(rect.left + 220 > window.innerWidth - 16);
+    }
+    setOpen(!open);
+  };
 
   return (
     <div ref={ref} className="relative inline-flex items-center">
-      <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}>{children}</div>
+      <div onClick={handleToggle}>{children}</div>
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-[220px] z-50 animate-fade-in-up" style={{ animationDuration: '0.15s' }}>
-          <div className="absolute top-0 left-3 -mt-1 border-4 border-transparent border-b-slate-800"></div>
+        <div
+          className={`absolute top-full mt-1.5 z-50 animate-fade-in-up ${
+            alignRight ? 'right-0' : 'left-0'
+          }`}
+          style={{ animationDuration: '0.15s', width: 'min(220px, calc(100vw - 32px))' }}
+        >
+          <div className={`absolute top-0 -mt-1 border-4 border-transparent border-b-slate-800 ${
+            alignRight ? 'right-3' : 'left-3'
+          }`}></div>
           <div className="bg-slate-800 text-white text-xs rounded-lg py-2.5 px-3.5 shadow-xl whitespace-pre-line leading-relaxed mt-1">
             {text}
           </div>
@@ -66,7 +88,7 @@ const LabelWithTooltip = ({ label, tooltipText }: { label: string; tooltipText: 
   <label className="form-label flex items-center gap-1.5">
     {label}
     <Tooltip text={tooltipText}>
-      <span className="cursor-pointer w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold hover:bg-orange-200 hover:text-orange-600 active:bg-orange-300 transition-colors select-none">?</span>
+      <span className="cursor-pointer w-5 h-5 md:w-4 md:h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[11px] md:text-[10px] font-bold hover:bg-orange-200 hover:text-orange-600 active:bg-orange-300 transition-colors select-none">?</span>
     </Tooltip>
   </label>
 );
@@ -461,6 +483,11 @@ export default function FunnelPage() {
         alert('날짜를 모두 선택해주세요.');
         return;
       }
+    } else if (category === 'medical') {
+      if (!formData.totalSessions) {
+        alert('총 시술/이용 횟수를 입력해주세요.');
+        return;
+      }
     } else if (category !== 'gym' && category !== 'other') {
       if (!formData.contractDate || !formData.cancelDate) {
         alert('계약/결제 일자와 취소 통보 일자를 모두 선택해주세요.');
@@ -475,7 +502,7 @@ export default function FunnelPage() {
     
     try {
       const payload: Record<string, any> = { ...formData, category };
-      const numericFields = ['totalAmount', 'totalMonths', 'usedMonths', 'demandedPenalty'];
+      const numericFields = ['totalAmount', 'totalMonths', 'usedMonths', 'totalSessions', 'usedSessions', 'demandedPenalty'];
       for (const field of numericFields) {
         if (payload[field]) payload[field] = String(Number(payload[field]));
       }
@@ -550,8 +577,18 @@ export default function FunnelPage() {
       {/* Header */}
       <header className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between w-full relative z-10 border-b border-orange-100/50 bg-white/60 backdrop-blur-sm">
         <div 
-          onClick={() => { if(step <= 2) handlePrev(1) }}
-          className={`flex items-center gap-2 min-w-0 ${step <= 2 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+          onClick={() => {
+            if (step > 1) {
+              if (window.confirm('작성 중인데 돌아가시겠습니까? 작성 중인 내용은 초기화됩니다.')) {
+                handlePrev(1);
+                setCategory('');
+                setFormData({});
+              }
+            } else {
+              handlePrev(1);
+            }
+          }}
+          className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-80"
         >
           <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md shadow-orange-500/20 flex-shrink-0">
             환
@@ -626,6 +663,27 @@ export default function FunnelPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><LabelWithTooltip label="이용 개월 수" tooltipText="실제로 헬스장/서비스를 이용하신 개월 수 또는 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" value={formData.usedMonths || ''} onChange={(e) => handleChange('usedMonths', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
                       <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><CurrencyInput value={formData.demandedPenalty || ''} onChange={(v) => handleChange('demandedPenalty', v)} required /></div>
+                    </div>
+                  </>
+                ) : category === 'medical' ? (
+                  <>
+                    <div><LabelWithTooltip label="총 결제 금액 (원)" tooltipText="시술 패키지(예: 레이저 5회) 등 실제 결제한 총 금액입니다." /><CurrencyInput value={formData.totalAmount || ''} onChange={(v) => handleChange('totalAmount', v)} required /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><LabelWithTooltip label="총 시술/이용 횟수" tooltipText="계약한 전체 시술 횟수입니다. (예: 레이저 5회, 필러 3회 등)" /><input type="number" inputMode="numeric" className="form-input" placeholder="예: 5" value={formData.totalSessions || ''} onChange={(e) => handleChange('totalSessions', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                      <div><LabelWithTooltip label="사용한 횟수" tooltipText="이미 시술/이용하신 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" placeholder="예: 2" value={formData.usedSessions || ''} onChange={(e) => handleChange('usedSessions', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                    </div>
+                    <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 병원/업체가 차감하겠다고 주장하는 위약금입니다." /><CurrencyInput value={formData.demandedPenalty || ''} onChange={(v) => handleChange('demandedPenalty', v)} required /></div>
+                    <div>
+                      <LabelWithTooltip label="환불 사유 (선택)" tooltipText="기간 만료, 병원 폐업, 유학/이사, 부작용, 단순 변심 등" />
+                      <select className="form-input" value={formData.cancelReason || ''} onChange={(e) => handleChange('cancelReason', e.target.value)}>
+                        <option value="">선택해주세요</option>
+                        <option value="expired">기간 만료 (유효기간 초과)</option>
+                        <option value="closure">병원/사업장 폐업</option>
+                        <option value="relocation">유학/이사/개인 사정</option>
+                        <option value="sideEffect">부작용/불만족</option>
+                        <option value="simple">단순 변심</option>
+                        <option value="other">기타</option>
+                      </select>
                     </div>
                   </>
                 ) : category === 'wedding' || category === 'travel' ? (
@@ -1048,8 +1106,8 @@ export default function FunnelPage() {
               <h3 className="font-bold text-slate-800">7. 개인정보보호 책임자</h3>
               <p>개인정보 관련 문의사항이 있으시면 아래 연락처로 문의해주시기 바랍니다.</p>
               <ul className="list-disc ml-5 space-y-1">
-                <li>담당자: 환불원정대 개인정보보호 담당</li>
-                <li>이메일: privacy@refund-expedition.com</li>
+                <li>담당자: 석지운</li>
+                <li>이메일: hello@refundlab.com</li>
               </ul>
 
               <p className="text-xs text-slate-400 pt-4 border-t border-slate-100">본 방침은 {new Date().getFullYear()}년 4월 1일부터 시행됩니다.</p>

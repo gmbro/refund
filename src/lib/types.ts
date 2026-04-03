@@ -15,11 +15,13 @@ export type DisputeInput = {
   otherCategoryName?: string;
   contractLink?: string;
   attachedFile?: string;
+  cancelReason?: string;
 };
 
 export type GymInput = DisputeInput;
 export type WeddingInput = DisputeInput;
 export type TravelInput = DisputeInput;
+export type MedicalInput = DisputeInput;
 
 export type RefundCalculation = {
   legalMinRefund: number;

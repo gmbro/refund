@@ -157,6 +157,16 @@ function buildInputData(category: string, data: Record<string, string>, descript
         demandedPenalty: Number(data.demandedPenalty) || 0,
         description,
       };
+    case 'medical':
+      return {
+        category: 'medical',
+        totalAmount: Number(data.totalAmount) || 0,
+        totalSessions: data.totalSessions ? Number(data.totalSessions) : undefined,
+        usedSessions: data.usedSessions ? Number(data.usedSessions) : undefined,
+        demandedPenalty: Number(data.demandedPenalty) || 0,
+        cancelReason: data.cancelReason || undefined,
+        description,
+      };
     default:
       // 범용 카테고리
       return {
