@@ -1022,8 +1022,7 @@ export default function FunnelPage() {
       <footer className="w-full border-t border-slate-200 bg-white/50 backdrop-blur-md py-8 relative z-10">
          <div className="max-w-4xl mx-auto px-6 text-center">
             <p className="text-xs text-slate-400 leading-relaxed mb-3">
-              본 서비스는 AI 리걸 어시스턴트에 의한 1차 진단 정보를 제공하며, 변호사법에 따른 유상 법률상담을 즉시 제공하지 않습니다.
-              <br/>모든 법적 권리 보호 조치와 분쟁 해결은 담당 변호사와의 실제 상담 검토 후 결정하시기 바랍니다.
+              본 서비스는 AI 리걸 어시스턴트에 의한 1차 진단 정보를 제공합니다. AI가 제공하는 답변은 입력하신 정보를 기반으로 하므로 참고용으로만 사용해 주시고, 구체적인 법적 판단은 전문가 상담을 권장합니다.
             </p>
             <div className="flex justify-center gap-4 mb-3">
               <button onClick={() => setShowTerms(true)} className="text-xs text-slate-500 hover:text-slate-800 underline decoration-slate-300 underline-offset-4">이용약관</button>
