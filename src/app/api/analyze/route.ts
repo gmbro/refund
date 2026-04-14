@@ -104,14 +104,13 @@ export async function POST(req: NextRequest) {
       console.error('Supabase save failed:', dbError);
     }
 
-    // 7. 결과 반환
+    // 7. 결과 반환 (변호사 리포트는 클라이언트에 전달하지 않음 — Admin API에서만 접근)
     const result = {
       id: resultId,
       category,
       input_data: inputData,
       calculation,
       clientSummary,
-      lawyerReport,
       created_at: new Date().toISOString(),
     };
 
