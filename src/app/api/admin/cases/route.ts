@@ -1,36 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { verifyAdminToken, isValidStatus, isValidUUID } from '@/lib/security';
+
+/**
+ * 관리자 인증 토큰 검증 헬퍼
+ */
+function authenticateAdmin(req: NextRequest): NextResponse | null {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return NextResponse.json(
+      { error: '인증이 필요합니다.' },
+      { status: 401 }
+    );
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  if (!verifyAdminToken(token)) {
+    return NextResponse.json(
+      { error: '인증 토큰이 유효하지 않거나 만료되었습니다. 다시 로그인해주세요.' },
+      { status: 401 }
+    );
+  }
+
+  return null; // 인증 성공
+}
 
 /**
  * 관리자용 접수 내역 조회 API
- * 관리자 인증 토큰이 있는 요청만 데이터를 반환합니다.
- * → 클라이언트에서 Supabase를 직접 호출하지 않아 anon key로의 DB 직접 접근을 차단합니다.
+ * - HMAC 서명 토큰 검증 (만료 24시간)
+ * - Supabase 서버사이드 접근
  */
 export async function GET(req: NextRequest) {
   try {
-    // Authorization 헤더에서 토큰 확인
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: '인증이 필요합니다.' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    // 토큰 검증 (base64 디코딩 후 admin 접두사 확인)
-    try {
-      const decoded = Buffer.from(token, 'base64').toString();
-      if (!decoded.startsWith('admin:')) {
-        throw new Error('Invalid token');
-      }
-    } catch {
-      return NextResponse.json(
-        { error: '유효하지 않은 인증 토큰입니다.' },
-        { status: 401 }
-      );
-    }
+    const authError = authenticateAdmin(req);
+    if (authError) return authError;
 
     const { data, error } = await supabase
       .from('dispute_analyses')
@@ -57,35 +61,28 @@ export async function GET(req: NextRequest) {
 
 /**
  * 접수 상태 변경 API
+ * - 상태 값 화이트리스트 검증 (SQL Injection 방지)
+ * - UUID 형식 검증
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: '인증이 필요합니다.' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    try {
-      const decoded = Buffer.from(token, 'base64').toString();
-      if (!decoded.startsWith('admin:')) {
-        throw new Error('Invalid token');
-      }
-    } catch {
-      return NextResponse.json(
-        { error: '유효하지 않은 인증 토큰입니다.' },
-        { status: 401 }
-      );
-    }
+    const authError = authenticateAdmin(req);
+    if (authError) return authError;
 
     const { id, status } = await req.json();
 
-    if (!id || !status) {
+    // UUID 형식 검증
+    if (!id || !isValidUUID(id)) {
       return NextResponse.json(
-        { error: '필수 파라미터가 누락되었습니다.' },
+        { error: '유효하지 않은 ID 형식입니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 상태 값 화이트리스트 검증
+    if (!status || !isValidStatus(status)) {
+      return NextResponse.json(
+        { error: '유효하지 않은 상태 값입니다. (pending, requested, reviewed)' },
         { status: 400 }
       );
     }

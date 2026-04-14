@@ -1,14 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIP, generateAdminToken } from '@/lib/security';
+
+// 로그인 시도 제한: IP당 5분에 5회
+const LOGIN_RATE_LIMIT = { max: 5, windowMs: 5 * 60 * 1000 };
 
 /**
  * 관리자 로그인 API
- * 비밀번호를 서버에서 검증하여 클라이언트에 비밀번호가 노출되지 않도록 합니다.
+ * - 비밀번호를 서버에서 검증
+ * - Rate Limiting으로 Brute Force 방지
+ * - HMAC 서명된 토큰 발급 (24시간 만료)
  */
 export async function POST(req: NextRequest) {
   try {
+    // Rate Limiting: Brute Force 방지
+    const clientIP = getClientIP(req);
+    const rateCheck = checkRateLimit(`admin-login:${clientIP}`, LOGIN_RATE_LIMIT.max, LOGIN_RATE_LIMIT.windowMs);
+    
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: '로그인 시도 횟수를 초과했습니다. 5분 후 다시 시도해주세요.' },
+        { status: 429 }
+      );
+    }
+
     const { password } = await req.json();
 
-    // 환경변수에서 관리자 비밀번호 읽기 (Vercel에 설정)
+    if (!password || typeof password !== 'string') {
+      return NextResponse.json(
+        { error: '비밀번호를 입력해주세요.' },
+        { status: 400 }
+      );
+    }
+
+    // 환경변수에서 관리자 비밀번호 읽기
     const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminPassword) {
@@ -21,15 +45,13 @@ export async function POST(req: NextRequest) {
 
     if (password !== adminPassword) {
       return NextResponse.json(
-        { error: '비밀번호가 일치하지 않습니다.' },
+        { error: `비밀번호가 일치하지 않습니다. (${rateCheck.remaining}회 남음)` },
         { status: 401 }
       );
     }
 
-    // 간단한 세션 토큰 생성 (실무에서는 JWT 사용 권장)
-    const sessionToken = Buffer.from(
-      `admin:${Date.now()}:${crypto.randomUUID()}`
-    ).toString('base64');
+    // HMAC 서명된 토큰 생성 (24시간 만료)
+    const sessionToken = generateAdminToken();
 
     return NextResponse.json({ 
       success: true, 

@@ -350,15 +350,21 @@ npx vercel --prod
 
 ### 주요 보안 조치 요약
 
-| 항목 | 조치 내용 |
-|------|----------|
-| **관리자 비밀번호** | 소스코드에서 제거 → 환경변수(`ADMIN_PASSWORD`)로 이관 |
-| **관리자 인증** | 클라이언트 비교 → 서버 API 검증(`/api/admin/login`) |
-| **DB 직접 접근** | Admin에서 Supabase 직접 호출 제거 → 서버 API 중계 |
-| **변호사 리포트** | API 응답에서 제거 → Admin API에서만 접근 가능 |
-| **API 키 보호** | `NEXT_PUBLIC_` 미사용, 서버사이드에서만 호출 |
-| **HTTP 보안** | 보안 헤더 6종 자동 적용 (XSS, 클릭재킹, HSTS 등) |
-| **API 캐시** | API 경로 응답 캐시 비활성화 (`no-store`) |
+| 위협 | 조치 | 구현 |
+|------|------|------|
+| **Brute Force** | 관리자 로그인 Rate Limiting | IP당 5분에 5회 제한, 초과 시 429 응답 |
+| **API 남용** | 분석 API Rate Limiting | IP당 1분에 3회 제한 (Gemini 비용 보호) |
+| **스팸 접수** | 상담 접수 Rate Limiting | IP당 10분에 5회 제한 |
+| **SSRF** | URL 화이트리스트 검증 | 내부 IP(10.x, 172.x, 192.168.x), localhost, 메타데이터 엔드포인트 차단 |
+| **토큰 위조** | HMAC 서명 토큰 | 비밀번호 기반 서명 + 24시간 자동 만료 |
+| **SQL Injection** | 입력값 화이트리스트 | 상태 값 3종, 카테고리 16종만 허용, UUID 형식 검증 |
+| **XSS** | 입력 sanitize | HTML 태그 문자 제거, 길이 제한 적용 |
+| **파일 업로드 공격** | 서버측 MIME/크기 검증 | PDF, JPG, PNG, WebP만 허용, 3MB 제한 |
+| **관리자 비밀번호** | 환경변수 이관 | `ADMIN_PASSWORD`, 소스코드 미포함 |
+| **DB 직접 접근** | 서버 API 중계 | Admin에서 Supabase 직접 호출 제거 |
+| **변호사 리포트** | 응답 분리 | 클라이언트 API 응답에서 제거, Admin 전용 |
+| **HTTP 보안** | 헤더 6종 적용 | XSS, 클릭재킹, HSTS, 캐시 비활성화 |
+| **RLS 정책** | UPDATE 조건 강화 | pending/requested 상태만 수정 가능 |
 
 ---
 
