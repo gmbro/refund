@@ -48,7 +48,7 @@ export async function analyzeLegalCase(
   }
 
   // 1. 고객용 기초 진단 요약 (Client Summary)
-  const summaryPrompt = `당신은 '석지운 변호사'를 보조하는 AI 리걸 어시스턴트입니다.
+  const summaryPrompt = `당신은 '환불원정대'의 AI 리걸 어시스턴트입니다.
 고객이 상담을 위해 입력한 정보를 바탕으로, 다음 내용을 담아 고객에게 보여줄 **단순 가이드라인(기초 진단서)**를 마크다운으로 작성해주세요.
 
 [핵심 원칙 — 반드시 준수]
@@ -74,7 +74,7 @@ ${contractContext}
 5. **주요 쟁점 분석** (업체 요구 위약금과 법적 기준의 차이를 구체적 금액으로 비교. 초과분이 있으면 "법적 기준 초과"로 명시)
 ${contractTermsText || attachment ? '6. **업체 약관/계약서 분석** (첨부된 계약서 또는 이용약관의 주요 조항을 분석하고, 소비자분쟁해결기준과 비교하여 불공정한 부분을 지적)' : ''}
 ${contractTermsText || attachment ? '7.' : '6.'} 환불액 안내 (합법적/권장 환불액과 업체 요구액의 차이를 명시)
-${contractTermsText || attachment ? '8.' : '7.'} 마지막 멘트를 "자세한 법적 대응 방향과 내용증명 작성 등은 석지운 변호사가 직접 내용을 검토한 후 상세히 안내해 드리겠습니다." 로 맺음.
+${contractTermsText || attachment ? '8.' : '7.'} 마지막 멘트를 "자세한 법적 대응 방향과 내용증명 작성 등은 환불원정대 전문 변호사가 직접 내용을 검토한 후 상세히 안내해 드리겠습니다." 로 맺음.
 ${contractTermsText || attachment ? '9.' : '8.'} 절대 변호사를 사칭하거나 확정적인 판결을 내리지 말 것. "~수 있습니다" 체를 사용.
 ${contractTermsText || attachment ? '10.' : '9.'} 읽기 편하도록 적절한 이모지와 불릿 포인트 사용.
 
@@ -95,7 +95,7 @@ ${contractTermsText || attachment ? '10.' : '9.'} 읽기 편하도록 적절한 
   const clientSummary = summaryResult.response.text();
 
   // 2. 변호사용 리포트 (Lawyer Report)
-  const reportPrompt = `당신은 '석지운 변호사'의 초기 사건 검토를 돕는 AI입니다.
+  const reportPrompt = `당신은 '환불원정대' 담당 변호사의 초기 사건 검토를 돕는 AI입니다.
 변호사가 고객과 연락하기 전에 빠르게 사건을 파악할 수 있도록 리포트를 작성해주세요.
 
 [핵심 원칙]

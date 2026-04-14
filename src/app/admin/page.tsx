@@ -72,7 +72,7 @@ export default function AdminPage() {
   return (
     <div className="p-8 max-w-6xl mx-auto font-gowun">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">석지운 변호사 접수 내역 (Admin)</h1>
+        <h1 className="text-2xl font-bold text-slate-800">환불원정대 접수 내역 (Admin)</h1>
         <button onClick={fetchRequests} className="px-4 py-2 bg-slate-100 rounded-lg text-sm hover:bg-slate-200">새로고침</button>
       </div>
 

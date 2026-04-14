@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "환불원정대 | 석지운 변호사",
+  title: "환불원정대 | AI 소비자 분쟁 진단",
   description: "불공정한 위약금, AI와 변호사가 함께 풀어드립니다.",
   icons: {
     icon: "https://fav.farm/⚖️",

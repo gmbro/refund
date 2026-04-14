@@ -502,6 +502,18 @@ export default function FunnelPage() {
     
     try {
       const payload: Record<string, any> = { ...formData, category };
+      
+      // 헬스장: 선택하지 않은 기준의 데이터 삭제 방지
+      if (category === 'gym') {
+        if (payload.gymUnit === 'sessions') {
+          delete payload.totalMonths;
+          delete payload.usedMonths;
+        } else {
+          delete payload.totalSessions;
+          delete payload.usedSessions;
+        }
+      }
+
       const numericFields = ['totalAmount', 'totalMonths', 'usedMonths', 'totalSessions', 'usedSessions', 'demandedPenalty'];
       for (const field of numericFields) {
         if (payload[field]) payload[field] = String(Number(payload[field]));
@@ -590,10 +602,8 @@ export default function FunnelPage() {
           }}
           className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-80"
         >
-          <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md shadow-orange-500/20 flex-shrink-0">
-            환
-          </div>
-          <span className="font-bold text-xs md:text-lg text-slate-800 tracking-tight truncate">석지운 변호사의 환불원정대</span>
+          <img src="/logo.png" alt="환불원정대 로고" className="w-7 h-7 md:w-8 md:h-8 rounded-lg object-contain flex-shrink-0" />
+          <span className="font-bold text-xs md:text-lg text-slate-800 tracking-tight truncate">환불원정대</span>
         </div>
         {step > 1 && step < 5 && (
           <div className="text-xs md:text-sm text-orange-600/80 font-medium bg-orange-100/50 px-2.5 md:px-3 py-1 rounded-full border border-orange-200/50 flex-shrink-0 ml-2">
@@ -656,12 +666,33 @@ export default function FunnelPage() {
                 
                 {category === 'gym' ? (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><LabelWithTooltip label="총 결제액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><CurrencyInput value={formData.totalAmount || ''} onChange={(v) => handleChange('totalAmount', v)} required /></div>
-                      <div><LabelWithTooltip label="총 개월 수" tooltipText="계약하신 전체 서비스 기간(개월 수) 또는 총 PT 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" value={formData.totalMonths || ''} onChange={(e) => handleChange('totalMonths', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                    <div className="mb-6">
+                      <LabelWithTooltip label="계약 기준" tooltipText="헬스장은 주로 개월(기간) 단위로, PT는 횟수 단위로 계약합니다." />
+                      <div className="flex gap-3 mt-2">
+                        <label className={`flex items-center gap-2 cursor-pointer bg-white px-4 py-3 rounded-xl border flex-1 transition-all ${formData.gymUnit === 'sessions' ? 'border-slate-200' : 'border-orange-500 bg-orange-50/50 shadow-sm ring-1 ring-orange-500'}`}>
+                          <input type="radio" name="gymUnit" value="months" checked={formData.gymUnit !== 'sessions'} onChange={() => handleChange('gymUnit', 'months')} className="text-orange-500 focus:ring-orange-500 w-4 h-4 cursor-pointer" />
+                          <span className="text-sm font-bold text-slate-700">개월 단위 (헬스장)</span>
+                        </label>
+                        <label className={`flex items-center gap-2 cursor-pointer bg-white px-4 py-3 rounded-xl border flex-1 transition-all ${formData.gymUnit === 'sessions' ? 'border-orange-500 bg-orange-50/50 shadow-sm ring-1 ring-orange-500' : 'border-slate-200'}`}>
+                          <input type="radio" name="gymUnit" value="sessions" checked={formData.gymUnit === 'sessions'} onChange={() => handleChange('gymUnit', 'sessions')} className="text-orange-500 focus:ring-orange-500 w-4 h-4 cursor-pointer" />
+                          <span className="text-sm font-bold text-slate-700">횟수 단위 (PT)</span>
+                        </label>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><LabelWithTooltip label="이용 개월 수" tooltipText="실제로 헬스장/서비스를 이용하신 개월 수 또는 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" value={formData.usedMonths || ''} onChange={(e) => handleChange('usedMonths', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                      <div><LabelWithTooltip label="총 결제액 (원)" tooltipText="할인 전 정가가 아닌, 부가세 포함 실제로 결제하신 총 금액입니다." /><CurrencyInput value={formData.totalAmount || ''} onChange={(v) => handleChange('totalAmount', v)} required /></div>
+                      {formData.gymUnit === 'sessions' ? (
+                        <div><LabelWithTooltip label="총 횟수" tooltipText="계약하신 전체 서비스(PT 등) 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" placeholder="예: 50" value={formData.totalSessions || ''} onChange={(e) => handleChange('totalSessions', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                      ) : (
+                        <div><LabelWithTooltip label="총 개월 수" tooltipText="계약하신 전체 서비스 기간(개월 수)입니다." /><input type="number" inputMode="numeric" className="form-input" placeholder="예: 12" value={formData.totalMonths || ''} onChange={(e) => handleChange('totalMonths', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {formData.gymUnit === 'sessions' ? (
+                        <div><LabelWithTooltip label="이용 횟수" tooltipText="실제로 서비스를 이용하신 횟수입니다." /><input type="number" inputMode="numeric" className="form-input" placeholder="예: 10" value={formData.usedSessions || ''} onChange={(e) => handleChange('usedSessions', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                      ) : (
+                        <div><LabelWithTooltip label="이용 개월 수" tooltipText="실제로 헬스장/서비스를 이용하신 개월 수입니다." /><input type="number" inputMode="numeric" className="form-input" placeholder="예: 3" value={formData.usedMonths || ''} onChange={(e) => handleChange('usedMonths', e.target.value)} onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)} required /></div>
+                      )}
                       <div><LabelWithTooltip label="업체 요구 위약금 (원)" tooltipText="환불을 요구했을 때 업체가 차감하겠다고 주장하는 위약금입니다." /><CurrencyInput value={formData.demandedPenalty || ''} onChange={(v) => handleChange('demandedPenalty', v)} required /></div>
                     </div>
                   </>
@@ -854,7 +885,7 @@ export default function FunnelPage() {
                   <p className="font-bold text-orange-700 mb-2 flex items-center gap-2">
                      안내사항
                   </p>
-                  본 진단서는 AI가 소비자분쟁해결기준을 바탕으로 작성한 단순 참고용 정보입니다. <strong className="text-orange-600 border-b border-orange-300">아래 폼을 통해 석지운 변호사에게 실제 대응 방안을 문의해보세요.</strong>
+                  본 진단서는 AI가 소비자분쟁해결기준을 바탕으로 작성한 단순 참고용 정보입니다. <strong className="text-orange-600 border-b border-orange-300">아래 폼을 통해 전문 변호사에게 실제 대응 방안을 문의해보세요.</strong>
               </div>
 
               {/* 내 법적 권리 하이라이트 섹션 */}
@@ -923,7 +954,7 @@ export default function FunnelPage() {
               {/* Action Form */}
               <div id="review-form" className="bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-slate-200 p-6 md:p-8 relative overflow-hidden">
                  <div className="mb-6 relative z-10">
-                   <h2 className="text-2xl font-extrabold text-slate-800 mb-2 text-center">석지운 변호사 전문 상담 신청</h2>
+                   <h2 className="text-2xl font-extrabold text-slate-800 mb-2 text-center">전문 변호사 상담 신청</h2>
                    <p className="text-slate-500 text-sm text-center">
                      AI가 정리한 쟁점 요약본을 변호사님께 바로 전달합니다.<br/>
                      가장 빠르고 확실한 승소 전략을 무료 1차 상담으로 안내해 드립니다.
@@ -1005,7 +1036,7 @@ export default function FunnelPage() {
              </div>
              <h2 className="text-3xl font-extrabold text-slate-800 mb-4">접수가 완료되었습니다!</h2>
              <p className="text-slate-600 mb-8 max-w-sm mx-auto leading-relaxed">
-               전달해주신 내용은 <strong>석지운 변호사</strong>가 꼼꼼히 확인 후,<br/>
+               전달해주신 내용은 <strong>환불원정대 전문 변호사</strong>가 꼼꼼히 확인 후,<br/>
                입력해주신 연락처(<strong>{formData.phoneNumber}</strong>) 또는<br/>
                이메일(<strong>{formData.userEmail}</strong>)로<br/>
                영업일 기준 1~2일 내에 답변을 드리겠습니다.
@@ -1030,7 +1061,7 @@ export default function FunnelPage() {
               <button onClick={() => setShowPrivacy(true)} className="text-xs font-bold text-slate-600 hover:text-slate-900 underline decoration-slate-400 underline-offset-4">개인정보처리방침</button>
             </div>
             <p className="text-[10px] text-slate-400">
-              © {new Date().getFullYear()} 석지운 변호사의 환불원정대. All rights reserved.
+              © {new Date().getFullYear()} 환불원정대. All rights reserved.
             </p>
          </div>
       </footer>
@@ -1105,7 +1136,7 @@ export default function FunnelPage() {
               <h3 className="font-bold text-slate-800">7. 개인정보보호 책임자</h3>
               <p>개인정보 관련 문의사항이 있으시면 아래 연락처로 문의해주시기 바랍니다.</p>
               <ul className="list-disc ml-5 space-y-1">
-                <li>담당자: 석지운</li>
+                <li>담당자: 환불원정대</li>
                 <li>이메일: hello@refundlab.com</li>
               </ul>
 
