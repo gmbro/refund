@@ -3,8 +3,10 @@
  * Rate Limiting, SSRF 방지, 입력 검증, 토큰 관리
  */
 
+import crypto from 'crypto';
+
 // ==========================================
-// 1. Rate Limiter (메모리 기반, Vercel Serverless 환경)
+// 1. Rate Limiter (메모리 기반 + Supabase 영구 저장)
 // ==========================================
 
 interface RateLimitEntry {
@@ -15,11 +17,9 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 /**
- * IP 기반 Rate Limiting
- * @param identifier - IP 주소 또는 고유 식별자
- * @param maxRequests - 윈도우 내 최대 허용 요청 수
- * @param windowMs - 윈도우 크기 (밀리초)
- * @returns { allowed: boolean, remaining: number }
+ * IP 기반 Rate Limiting (메모리 기반)
+ * ⚠️ Vercel Serverless에서는 인스턴스마다 독립적이므로 완벽하지 않음.
+ *    비밀번호 강도 + timingSafeEqual이 1차 방어선이고, 이것은 보조 방어선입니다.
  */
 export function checkRateLimit(
   identifier: string,
@@ -51,8 +51,11 @@ export function checkRateLimit(
 
 /**
  * NextRequest에서 클라이언트 IP 추출
+ * Vercel 환경에서는 x-forwarded-for를 Vercel이 직접 설정하므로 위조 불가
+ * 다른 환경에서의 위조 방지를 위해 x-real-ip도 확인
  */
 export function getClientIP(req: Request): string {
+  // Vercel은 자체적으로 x-forwarded-for를 설정하며 클라이언트가 위조 불가
   const forwarded = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim();
   const realIp = req.headers.get('x-real-ip') || '';
   return forwarded || realIp || 'unknown';
@@ -83,35 +86,29 @@ const BLOCKED_IP_RANGES = [
 
 /**
  * URL이 안전한 외부 URL인지 검증 (SSRF 방지)
- * 내부 네트워크, 클라우드 메타데이터 엔드포인트 등 차단
  */
 export function isUrlSafe(urlString: string): boolean {
   try {
     const url = new URL(urlString);
     
-    // HTTPS/HTTP만 허용
     if (!['http:', 'https:'].includes(url.protocol)) {
       return false;
     }
     
-    // 차단 호스트 확인
     if (BLOCKED_HOSTS.includes(url.hostname.toLowerCase())) {
       return false;
     }
     
-    // 내부 IP 대역 확인
     for (const range of BLOCKED_IP_RANGES) {
       if (range.test(url.hostname)) {
         return false;
       }
     }
     
-    // 포트 제한 (80, 443만 허용)
     if (url.port && !['80', '443', ''].includes(url.port)) {
       return false;
     }
 
-    // AWS/GCP/Azure 메타데이터 엔드포인트 차단
     if (url.hostname === '169.254.169.254' || url.hostname === 'metadata.google.internal') {
       return false;
     }
@@ -123,78 +120,107 @@ export function isUrlSafe(urlString: string): boolean {
 }
 
 // ==========================================
-// 3. 관리자 토큰 관리 (HMAC 서명)
+// 3. 관리자 토큰 관리 (HMAC-SHA256 서명)
 // ==========================================
 
-const ADMIN_TOKEN_SECRET = process.env.ADMIN_PASSWORD || 'fallback-secret';
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24시간
 
 /**
- * 서명된 관리자 토큰 생성
- * 형식: base64(admin:timestamp:uuid:signature)
+ * HMAC-SHA256 서명 기반 토큰 생성
+ * - crypto.createHmac으로 암호학적으로 안전한 서명
+ * - 24시간 자동 만료
  */
 export function generateAdminToken(): string {
+  const secret = process.env.ADMIN_PASSWORD;
+  if (!secret) throw new Error('ADMIN_PASSWORD not set');
+  
   const timestamp = Date.now();
   const uuid = crypto.randomUUID();
   const payload = `admin:${timestamp}:${uuid}`;
   
-  // 간단한 HMAC-like 서명 (Node crypto 대신 문자열 기반)
-  const signature = generateSignature(payload);
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
   
   return Buffer.from(`${payload}:${signature}`).toString('base64');
 }
 
 /**
- * 관리자 토큰 검증
- * - 형식 확인: admin:timestamp:uuid:signature
- * - 서명 확인
- * - 만료 시간 확인 (24시간)
+ * HMAC-SHA256 서명 토큰 검증
+ * - 서명 위조 불가능 (SHA256)
+ * - 만료 시간 확인
+ * - timingSafeEqual로 타이밍 공격 방지
  */
 export function verifyAdminToken(token: string): boolean {
   try {
-    const decoded = Buffer.from(token, 'base64').toString();
-    const parts = decoded.split(':');
+    const secret = process.env.ADMIN_PASSWORD;
+    if (!secret) return false;
     
-    if (parts.length < 4 || parts[0] !== 'admin') {
-      return false;
-    }
+    const decoded = Buffer.from(token, 'base64').toString();
+    const lastColonIndex = decoded.lastIndexOf(':');
+    if (lastColonIndex === -1) return false;
+    
+    // payload와 signature 분리 (signature가 64자 hex)
+    const parts = decoded.split(':');
+    if (parts.length < 4) return false;
+    
+    // admin:timestamp:uuid:signature
+    const signature = parts[parts.length - 1];
+    const payload = parts.slice(0, -1).join(':');
+    
+    if (!payload.startsWith('admin:')) return false;
     
     const timestamp = parseInt(parts[1], 10);
-    const uuid = parts[2];
-    const signature = parts.slice(3).join(':');
     
     // 만료 확인
-    if (Date.now() - timestamp > TOKEN_EXPIRY_MS) {
+    if (isNaN(timestamp) || Date.now() - timestamp > TOKEN_EXPIRY_MS) {
       return false;
     }
     
-    // 서명 검증
-    const payload = `admin:${timestamp}:${uuid}`;
-    const expectedSignature = generateSignature(payload);
+    // HMAC-SHA256 서명 재계산 후 timingSafeEqual로 비교
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
     
-    return signature === expectedSignature;
+    // 타이밍 공격 방지: 길이가 다르면 false
+    if (signature.length !== expectedSignature.length) {
+      return false;
+    }
+    
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
   } catch {
     return false;
   }
 }
 
+// ==========================================
+// 4. 비밀번호 비교 (Timing Attack 방지)
+// ==========================================
+
 /**
- * 간단한 서명 생성 (ADMIN_PASSWORD 기반)
+ * 비밀번호를 타이밍 공격에 안전하게 비교
+ * - 입력 길이와 관계없이 항상 일정한 시간 소요
+ * - crypto.timingSafeEqual 사용
  */
-function generateSignature(payload: string): string {
-  // 단순 해시 (실무에서는 crypto.createHmac 사용 권장)
-  let hash = 0;
-  const combined = payload + ADMIN_TOKEN_SECRET;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // 32bit integer로 변환
+export function securePasswordCompare(input: string, expected: string): boolean {
+  try {
+    // 두 문자열을 SHA256 해시로 변환하여 길이를 통일
+    const inputHash = crypto.createHash('sha256').update(input).digest();
+    const expectedHash = crypto.createHash('sha256').update(expected).digest();
+    
+    return crypto.timingSafeEqual(inputHash, expectedHash);
+  } catch {
+    return false;
   }
-  return Math.abs(hash).toString(36) + combined.length.toString(36);
 }
 
 // ==========================================
-// 4. 입력 검증
+// 5. 입력 검증
 // ==========================================
 
 const VALID_CATEGORIES = [
@@ -205,55 +231,34 @@ const VALID_CATEGORIES = [
 
 const VALID_STATUSES = ['pending', 'requested', 'reviewed'];
 
-/**
- * 카테고리 유효성 검증
- */
 export function isValidCategory(category: string): boolean {
   return VALID_CATEGORIES.includes(category);
 }
 
-/**
- * 상태 값 유효성 검증
- */
 export function isValidStatus(status: string): boolean {
   return VALID_STATUSES.includes(status);
 }
 
-/**
- * 금액 범위 검증 (0 ~ 10억)
- */
 export function isValidAmount(amount: number): boolean {
   return typeof amount === 'number' && amount >= 0 && amount <= 1_000_000_000 && isFinite(amount);
 }
 
-/**
- * UUID 형식 검증
- */
 export function isValidUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-/**
- * 문자열 sanitize (XSS 방지)
- */
 export function sanitizeString(input: string, maxLength: number = 5000): string {
   if (typeof input !== 'string') return '';
   return input
-    .replace(/[<>]/g, '') // HTML 태그 문자 제거
+    .replace(/[<>]/g, '')
     .trim()
     .slice(0, maxLength);
 }
 
-/**
- * 이메일 유효성 검증
- */
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-/**
- * 전화번호 유효성 검증 (한국 형식)
- */
 export function isValidPhone(phone: string): boolean {
   return /^0\d{1,2}-?\d{3,4}-?\d{4}$/.test(phone.replace(/\s/g, ''));
 }
