@@ -91,9 +91,6 @@ ${contractTermsText || attachment ? '10.' : '9.'} 읽기 편하도록 적절한 
     });
   }
 
-  const summaryResult = await model.generateContent(summaryParts);
-  const clientSummary = summaryResult.response.text();
-
   // 2. 변호사용 리포트 (Lawyer Report)
   const reportPrompt = `당신은 '환불원정대' 담당 변호사의 초기 사건 검토를 돕는 AI입니다.
 변호사가 고객과 연락하기 전에 빠르게 사건을 파악할 수 있도록 리포트를 작성해주세요.
@@ -141,8 +138,26 @@ ${contractTermsText || attachment ? `## 업체 약관/계약서 분석
     });
   }
 
-  const reportResult = await model.generateContent(reportParts);
-  const lawyerReport = reportResult.response.text();
+  // 503 High Demand 에러 대비 Fallback 처리 함수
+  async function generateWithFallback(parts: Part[]): Promise<string> {
+    try {
+      const result = await model.generateContent(parts);
+      return result.response.text();
+    } catch (error: any) {
+      if (error?.message?.includes('503') || error?.status === 503) {
+        console.warn('Gemini 2.5 Flash 503 Error. Falling back to Gemini 1.5 Flash...');
+        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await fallbackModel.generateContent(parts);
+        return result.response.text();
+      }
+      throw error;
+    }
+  }
+
+  const [clientSummary, lawyerReport] = await Promise.all([
+    generateWithFallback(summaryParts),
+    generateWithFallback(reportParts)
+  ]);
 
   return { clientSummary, lawyerReport };
 }
